@@ -1,0 +1,18 @@
+include MANIFEST.in
+include requirements.txt
+include *.json
+include *.md
+include *.py
+include *.txt
+recursive-include summit_api *.css
+recursive-include summit_api *.csv
+recursive-include summit_api *.html
+recursive-include summit_api *.ico
+recursive-include summit_api *.js
+recursive-include summit_api *.json
+recursive-include summit_api *.md
+recursive-include summit_api *.png
+recursive-include summit_api *.py
+recursive-include summit_api *.svg
+recursive-include summit_api *.txt
+recursive-exclude summit_api *.pyc
