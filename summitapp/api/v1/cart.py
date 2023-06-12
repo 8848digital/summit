@@ -1,5 +1,5 @@
 import frappe
-from summitapp.utils import error_response, success_response, create_temp_user, get_company_address, check_guest_user
+from summitapp.utils import error_response, success_response, create_temp_user, get_company_address, check_guest_user, get_parent_categories
 from summitapp.api.v1.product import get_stock_info, get_slide_images, get_recommendation, get_product_url
 from summitapp.api.v1.utils import get_price_list,get_field_names
 from erpnext.controllers.accounts_controller import get_taxes_and_charges
@@ -59,7 +59,10 @@ def put_products(kwargs):
 					in_stock_status = False
 			if (not in_stock_status) and (not allow_items_not_in_stock): return error_response('Stock Not Available!')
 		
-		added_to_cart = add_item_to_cart(item_list, frappe.session.sid)
+		fields = {}
+		if cust_name:=kwargs.get("cust_name"):
+			fields["cust_name"] = cust_name
+		added_to_cart = add_item_to_cart(item_list, frappe.session.sid, fields)
 		return success_response(data = added_to_cart)
 	except Exception as e:
 		frappe.logger('cart').exception(e)
@@ -167,6 +170,8 @@ def get_order_items(item_doc,item):
 		return {
 			'item_code': item_doc.item_code,
 			'weight_abbr':item_doc.weight_abbr,
+			'category': item_doc.category,
+			'parent_categories': get_parent_categories(item_doc.category, True, name_only = True),
 			'level_1_category':item_doc.level_1_category,
 			'level_2_category':item_doc.level_2_category,
 			'qty':item.qty,
@@ -250,11 +255,12 @@ def create_cart(session_id = frappe.session.user, party_name = None):
 		quot_doc.company_gstin = company_addr.get("gstin")
 	return quot_doc
 
-def add_item_to_cart(item_list, session):
+def add_item_to_cart(item_list, session, fields = {}):
 	# quotation = quot_doc
 	customer_id = frappe.db.get_value('Customer', {'email': frappe.session.user})
 	quotation = create_cart(session, customer_id)
 	price_list = get_price_list(customer_id)
+	quotation.update(fields)
 	quotation.selling_price_list = price_list
 	for item in item_list:
 		quotation_items = quotation.get("items", {"item_code": item.get("item_code")})

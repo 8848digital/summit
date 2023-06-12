@@ -31,9 +31,14 @@ def check_brand_exist(filters):
 
 def get_filter_list(kwargs):
 	filters = {
-		"disabled": 0,
-		"variant_of": ['is', "not set"]
+		"disabled": 0
 	}
+	display_both_item_and_variant = int(frappe.db.get_value("Web Settings","Web Settings","display_both_item_and_variant"))
+	if display_both_item_and_variant == 1:
+		frappe.msgprint(str(display_both_item_and_variant))
+		filters['has_variants'] = 0
+	else:
+		filters['variant_of'] =  ['is', "not set"]
 	for key, val in kwargs.items():
 		if val:
 			filters.update({key: val})
