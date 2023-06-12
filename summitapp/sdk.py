@@ -5,7 +5,7 @@ from summitapp.api.V2 import V2
 import time
 
 @frappe.whitelist(allow_guest=True)
-def version_mapper(**kwargs):
+def api(**kwargs):
     try:
         st = time.time()
         version = kwargs.get('version') 

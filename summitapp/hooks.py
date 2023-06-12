@@ -86,4 +86,3 @@ import summitapp.monkey_patches
 # auth_hooks = [
 # 	"summitapp.auth.validate"
 # ]
-
