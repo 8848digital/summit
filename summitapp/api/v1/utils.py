@@ -35,7 +35,6 @@ def get_filter_list(kwargs):
 	}
 	display_both_item_and_variant = int(frappe.db.get_value("Web Settings","Web Settings","display_both_item_and_variant"))
 	if display_both_item_and_variant == 1:
-		frappe.msgprint(str(display_both_item_and_variant))
 		filters['has_variants'] = 0
 	else:
 		filters['variant_of'] =  ['is', "not set"]
@@ -69,7 +68,7 @@ def get_item_field_values(item, customer_id, field_names, url_type = "product"):
         'price': lambda: {'price': get_item_price(item.get("name"), customer_id, get_price_list(customer_id))[0]},
         'display_tag': lambda: {'display_tag': item.get('display_tag') or frappe.get_list("Tags MultiSelect", {"parent": item.name}, pluck='tag', ignore_permissions=True)},
         'url': lambda: {'url': get_product_url(item, url_type)},
-		'variant': lambda: {'variant':get_variant_details(item.get('item_code'))},
+		'variant': lambda: {'variant':get_variant_details(item.get('variant_of'))},
         'brand_video_url': lambda: {'brand_video_url': frappe.get_value('Brand', item.get('brand'), ['brand_video_link']) or None},
 		'size_chart': lambda: {'size_chart': frappe.get_value('Size Chart', item.get('size_chart'), 'chart')},
 		'slide_img': lambda: {'slide_img': get_slide_images(item.get('name'), False)},
@@ -324,6 +323,8 @@ def create_user_tracking(kwargs, page):
 	frappe.db.commit()
 
 def get_variant_details(item_code):
+	if not item_code:
+		return []
 	item = frappe.db.get_all('Item', filters={'variant_of': item_code}, fields=['name as item_code'])
 	for i in item:
 		item_doc = frappe.get_doc('Item', i)

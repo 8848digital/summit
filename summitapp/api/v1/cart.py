@@ -14,8 +14,8 @@ def get_list(kwargs):
 			return error_response('Please login as a customer')
 
 		customer = frappe.get_value("Customer",{'email':email})
-		result, grand_total, grand_total_excluding_tax = get_quotation_details(customer)
-		return {'msg': 'success', 'data': result, 'grand_total_including_tax': grand_total,'grand_total_excluding_tax': grand_total_excluding_tax}
+		result, grand_total, grand_total_excluding_tax, total_weight = get_quotation_details(customer)
+		return {'msg': 'success', 'data': result, 'grand_total_including_tax': grand_total,'grand_total_excluding_tax': grand_total_excluding_tax, "grand_total_weight": total_weight}
 	except Exception as e:
 		frappe.logger('cart').exception(e)
 		return error_response(e)
@@ -113,108 +113,90 @@ def clear_cart(kwargs):
 		return error_response(e)
 
 def get_quotation_details(customer=None):
-    or_filter = {"owner": frappe.session.user}
-    if customer:
-        or_filter["party_name"] = customer
-    quotations = frappe.get_list("Quotation", filters={'status': 'Draft'}, or_filters=or_filter, fields='*')
-    grand_total = 0
-    item_fields = []
-    grand_total_excluding_tax = 0
-    for quot in quotations:
-        quot_doc = frappe.get_doc('Quotation', quot['name'])
-        grand_total = quot_doc.rounded_total or quot_doc.grand_total
-        grand_total_excluding_tax = quot_doc.total
-        item_fields = get_processed_cart(quot_doc)
-    return item_fields, grand_total,grand_total_excluding_tax
+	or_filter = {"owner": frappe.session.user}
+	if customer:
+		or_filter["party_name"] = customer
+	quotations = frappe.get_list("Quotation", filters={'status': 'Draft'}, or_filters=or_filter, fields='*')
+	grand_total = 0
+	item_fields = []
+	grand_total_excluding_tax = 0
+	for quot in quotations:
+		quot_doc = frappe.get_doc('Quotation', quot['name'])
+		grand_total = quot_doc.rounded_total or quot_doc.grand_total
+		grand_total_excluding_tax = quot_doc.total
+		item_fields, total_weight = get_processed_cart(quot_doc)
+		result = {
+			'party_name': quot_doc.party_name,
+			'name':  quot_doc.name,
+			'total_qty':  quot_doc.total_qty,
+			'colour': quot_doc.get("colour"),
+			'cust_name': quot_doc.get("cust_name"),
+			'transaction_date': quot_doc.transaction_date,
+			'common_comment': quot_doc.get("common_comment"),
+			'categories': item_fields
+		}
+	return result, grand_total, grand_total_excluding_tax, total_weight
 
-def _get_processed_cart(quot_doc):
-	item_dict = frappe._dict()
-	category_wise_item = frappe._dict()
+def get_processed_cart(quot_doc):
+	item_dict = {}
+	category_wise_item = {}
 	total_weight = 0
 	for row in quot_doc.items:
-		item_doc = frappe.db.get_value("Item",row.item_code,"*")
-		if not item_dict.get(row['item_code']):
+		item_doc = frappe.db.get_value("Item", row.item_code, "*")
+		if row.item_code not in item_dict:
 			total_weight += row.total_size_weight
-			item_dict[row['item_code']] = {
-					"item_code": row['item_code'],
-					'bom_factory_code' : item_doc.get('bom_factory_code'),
-					'weight_abbr' : item_doc.get('weight_abbr'),
-					'net_weight' : item_doc.get('net_weight'),
-					"bar_code_image":get_bar_code_image(row['item_code']),
-					"category": item_doc.get('category'),
-					"parent_categories": get_parent_categories(item_doc.category, True, name_only = True),
-					"colour": item_doc.get('colour'),
-					"order": [{"qty": row['qty'], "size": row['size'],"colour":row.get("colour"),"weight":row.total_size_weight}],
-					"weight_per_unit": row['weight_per_unit'],
-					"purity": row['purity'],
-					"image": row['image'],
-					"total_weight": round(row.total_size_weight,3),
-					"remark": row.remark,
-					"wastage": row.wastage
+			item_dict[row.item_code] = {
+				"item_code": row.item_code,
+				"bom_factory_code": item_doc.get('bom_factory_code'),
+				"weight_abbr": item_doc.get('weight_abbr'),
+				"net_weight": item_doc.get('net_weight'),
+				"bar_code_image": get_bar_code_image(row.item_code),
+				"category": item_doc.get('category'),
+				"colour": item_doc.get('colour'),
+				"order": [{"qty": row.qty, "size": row.get("size"), "colour": row.get("colour"), "weight": round(row.get("total_size_weight"), 3)}],
+				"weight_per_unit": row.weight_per_unit,
+				"purity": row.get('purity'),
+				"image": row.get('image'),
+				"total_weight": round(row.get("total_size_weight"), 3),
+				"remark": row.get("remark"),
+				"wastage": row.get("wastage"),
+				'tax': flt(get_item_wise_tax(quot_doc.taxes).get(item_doc.name, {}).get('tax_amount', 0), 2),
+				'min_order_qty':  item_doc.get("min_order_qty"),
+				'brand_img': frappe.get_value('Brand', {'name': item_doc.get('brand')}, 'image'),
+				'product_url': get_product_url(item_doc),
+				'in_stock_status': True if get_stock_info(item_doc.name, 'stock_qty') != 0 else False,
+				'image_url': get_slide_images(row.item_code, True),
+				'store_pickup_available': item_doc.get("store_pick_up_available", "No"),
+				'home_delivery_available': item_doc.get("home_delivery_available", "No")
 			}
 		else:
 			total_weight += row.total_size_weight
-			item_dict[row['item_code']]["order"].append(
-					{"qty": row['qty'], "size": row['size'],"colour":row.get("colour"),"image": row['image'],"weight":row.total_size_weight,"wastage": row.wastage}
+			item_dict[row.item_code]["order"].append(
+				{"qty": row.qty, "size": row.size, "colour": row.get("colour"), "image": row.get('image'), "weight": row.total_size_weight, "wastage": row.wastage}
 			)
-			item_dict[row['item_code']]["total_weight"] += round(row.total_size_weight,3)
+			item_dict[row.item_code]["total_weight"] += round(row.total_size_weight, 3)
 		
 		existing_cat = category_wise_item.get(item_doc.category)
 		wt = 0
-		item_list = []
+		item_list = [row.item_code]
 		if existing_cat:
-			wt = existing_cat.get("wt") + round(row.total_size_weight,3)
-			item_list = existing_cat.get('item_list', []).append(row.item_code)
+			wt = existing_cat.get("wt") + round(row.total_size_weight, 3)
+			item_list = existing_cat.get('item_list', [])
+			if row.item_code not in item_list:
+				item_list.append(row.item_code)
 		category_wise_item[item_doc.category] = {
 			'wt': wt,
 			'item_list': item_list
 		}
 	
-	processed = []
-	for category, items in category_wise_item.items():
-		temp = frappe._dict()
-		temp["category"] = category,
-		temp["total_weight"] = items['wt']
-		temp["orders"] = [item_dict.get(item) for item in items['item_list']]
-		processed.append(temp)
-	return  processed
-
-def get_processed_cart(quot_doc):
-    field_names = get_field_names('Cart')
-    processed_items = []
-    for item in quot_doc.items:
-        item_doc = frappe.db.get_value("Item",item.item_code,"*")
-        computed_fields = {
-            'party_name': lambda:{'party_name':quot_doc.party_name},
-            'name': lambda:{'name':quot_doc.name},
-            'total_qty': lambda: {'total_qty':quot_doc.total_qty},
-	    	'colour':lambda:{'colour':quot_doc.colour},
-		    'cust_name':lambda:{'cust_name':quot_doc.cust_name},
-		    'transaction_date':lambda:{'transaction_date':quot_doc.transaction_date},
-			'common_comment':lambda:{'common_comment':quot_doc.common_comment},
-			'orders':lambda:{'orders':get_order_items(item_doc, item)},
-			'level_1_category':lambda:{'level_1_category':item_doc.get("level_1_category")},
-			'level_2_category':lambda:{'level_2_category':item_doc.get("level_2_category")},
-			'min_order_qty': lambda: {'min_order_qty': item_doc.get("min_order_qty")},
-			'category': lambda: {'category': item_doc.category},
-			'brand_img': lambda:{'brand_img':frappe.get_value('Brand', {'name': item_doc.get('brand')}, 'image')},
-			'level_three_category_name': lambda: {'level_three_category_name': item_doc.get("level_three_category_name")},
-			'tax': lambda: {'tax': flt(get_item_wise_tax(quot_doc.taxes).get(item_doc.name, {}).get('tax_amount', 0), 2)},
-   			'product_url': lambda: {'product_url': get_product_url(item_doc)},
-			'in_stock_status': lambda:{"in_stock_status": True if get_stock_info(item_doc.name, 'stock_qty') != 0 else False},
-			'image_url':lambda:{"image_url": get_slide_images(item.item_code, True)},
-			'details':lambda:{"details": get_item_details(item_doc, item)},
-   			'store_pickup_available':lambda:{"store_pickup_available" : item_doc.get("store_pick_up_available", "No")},
-			'home_delivery_available':lambda:{"home_delivery_available" : item_doc.get("home_delivery_available", "No")}
-		}
-        item_fields = {}
-        for field_name in field_names:
-            if field_name in computed_fields.keys():
-                item_fields.update(computed_fields.get(field_name)())
-            else:
-                item_fields.update({field_name: item.get(field_name)})
-        processed_items.append(item_fields)    
-    return processed_items
+	processed = [{
+		"category": category,
+		"parent_categories": get_parent_categories(item_doc.category, True, name_only=True),
+		"total_weight": items['wt'],
+		"orders": [item_dict.get(item) for item in items['item_list']]
+	} for category, items in category_wise_item.items()]
+	
+	return processed, round(total_weight, 3)
 
 def get_order_items(item_doc,item):
 	if item_doc:
@@ -317,10 +299,10 @@ def add_item_to_cart(item_list, session, fields = {}):
 		quotation_items = quotation.get("items", {"item_code": item.get("item_code")})
 		if not quotation_items:
 			item_data = {
-                "doctype": "Quotation Item",
-                "item_code": item.get("item_code"),
-                "qty": item.get("quantity")
-            }
+				"doctype": "Quotation Item",
+				"item_code": item.get("item_code"),
+				"qty": item.get("quantity")
+			}
 			if "size" in item:
 				item_data["size"] = item["size"]
 			if "wastage" in item:
