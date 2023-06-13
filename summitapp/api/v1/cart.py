@@ -127,6 +127,58 @@ def get_quotation_details(customer=None):
         item_fields = get_processed_cart(quot_doc)
     return item_fields, grand_total,grand_total_excluding_tax
 
+def _get_processed_cart(quot_doc):
+	item_dict = frappe._dict()
+	category_wise_item = frappe._dict()
+	total_weight = 0
+	for row in quot_doc.items:
+		item_doc = frappe.db.get_value("Item",row.item_code,"*")
+		if not item_dict.get(row['item_code']):
+			total_weight += row.total_size_weight
+			item_dict[row['item_code']] = {
+					"item_code": row['item_code'],
+					'bom_factory_code' : item_doc.get('bom_factory_code'),
+					'weight_abbr' : item_doc.get('weight_abbr'),
+					'net_weight' : item_doc.get('net_weight'),
+					"bar_code_image":get_bar_code_image(row['item_code']),
+					"category": item_doc.get('category'),
+					"parent_categories": get_parent_categories(item_doc.category, True, name_only = True),
+					"colour": item_doc.get('colour'),
+					"order": [{"qty": row['qty'], "size": row['size'],"colour":row.get("colour"),"weight":row.total_size_weight}],
+					"weight_per_unit": row['weight_per_unit'],
+					"purity": row['purity'],
+					"image": row['image'],
+					"total_weight": round(row.total_size_weight,3),
+					"remark": row.remark,
+					"wastage": row.wastage
+			}
+		else:
+			total_weight += row.total_size_weight
+			item_dict[row['item_code']]["order"].append(
+					{"qty": row['qty'], "size": row['size'],"colour":row.get("colour"),"image": row['image'],"weight":row.total_size_weight,"wastage": row.wastage}
+			)
+			item_dict[row['item_code']]["total_weight"] += round(row.total_size_weight,3)
+		
+		existing_cat = category_wise_item.get(item_doc.category)
+		wt = 0
+		item_list = []
+		if existing_cat:
+			wt = existing_cat.get("wt") + round(row.total_size_weight,3)
+			item_list = existing_cat.get('item_list', []).append(row.item_code)
+		category_wise_item[item_doc.category] = {
+			'wt': wt,
+			'item_list': item_list
+		}
+	
+	processed = []
+	for category, items in category_wise_item.items():
+		temp = frappe._dict()
+		temp["category"] = category,
+		temp["total_weight"] = items['wt']
+		temp["orders"] = [item_dict.get(item) for item in items['item_list']]
+		processed.append(temp)
+	return  processed
+
 def get_processed_cart(quot_doc):
     field_names = get_field_names('Cart')
     processed_items = []
