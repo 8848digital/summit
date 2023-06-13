@@ -92,7 +92,8 @@ def get_product_url(item_detail, url_type = "product"):
 		return "/"
 	item_cat = item_detail.get('category')
 	item_cat_slug = frappe.db.get_value('Category',item_cat,'slug')
-	if product_template:=item_detail.get("variant_of"):
+	display_both_item_and_variant = int(frappe.db.get_value("Web Settings","Web Settings","display_both_item_and_variant"))
+	if product_template:=item_detail.get("variant_of") and not display_both_item_and_variant:
 		product_slug = frappe.db.get_value('Item', product_template, 'slug')
 	else:
 		product_slug = item_detail.get("slug")
