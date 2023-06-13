@@ -25,7 +25,6 @@ def put_products(kwargs):
 	try:
 		if frappe.session.user == "Guest":
 			create_temp_user()
-
 		items = kwargs.get('item_list')
 		if isinstance(items,str):
 			items = json.loads(items)
@@ -41,9 +40,9 @@ def put_products(kwargs):
 				for item in recommendations:
 					if not item:
 						continue
-					item_list.append({"item_code": item, "quantity": row["quantity"]})
+					item_list.append({"item_code": item, "quantity": row.get("quantity"),"size": row.get("size"),"purity": row.get("purity"),"wastage": row.get("wastage"),"colour": row.get("colour"),"remark": row.get("remark")})
 			else:
-				item_list.append({"item_code": row.get("item_code"), "quantity": row["quantity"]})
+				item_list.append({"item_code": row.get("item_code"), "quantity": row.get("quantity"),"size": row.get("size"),"purity": row.get("purity"),"wastage": row.get("wastage"),"colour": row.get("colour"),"remark": row.get("remark")})
 
 		in_stock_status = True
 		for item in item_list:

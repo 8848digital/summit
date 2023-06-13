@@ -93,6 +93,8 @@ def place_order(kwargs):
 		if email == "Guest":
 			return error_response('Please Login As A Customer')	
 		order_id = kwargs.get('order_id')
+		common_comment = kwargs.get('common_comment')
+		payment_date = kwargs.get('payment_date')
 		billing_address_id = kwargs.get('billing_address_id')
 		shipping_address_id = kwargs.get('shipping_address_id')
 		transporter = kwargs.get('transporter')
@@ -105,13 +107,14 @@ def place_order(kwargs):
 			quotation = _get_cart_quotation()
 		else:
 			quotation = frappe.get_doc('Quotation', order_id)
+		quotation.common_comment = common_comment	
 		quotation.transporter = transporter
 		quotation.door_delivery = door_delivery
 		quotation.godown_delivery = godown_delivery
 		quotation.location = location
 		quotation.remarks = remarks
 		quotation.transport_charges = transport_charges
-		order = submit_quotation(quotation, billing_address_id, shipping_address_id)
+		order = submit_quotation(quotation, billing_address_id, shipping_address_id,payment_date)
 		frappe.local.login_manager.login_as(email)
 		return order
 	except Exception as e:
@@ -278,19 +281,23 @@ def get_address_detail_json(type, customer, address_doc):
 			'values' : [get_address_details(customer, address_doc)] if address_doc else []
 		}
 
-def submit_quotation(quot_doc, billing_address_id, shipping_address_id):
+def submit_quotation(quot_doc, billing_address_id, shipping_address_id,payment_date):
 	frappe.local.login_manager.login_as('Administrator')
 	quot_doc.customer_address = billing_address_id
 	quot_doc.shipping_address_name = shipping_address_id
 	quot_doc.payment_schedule = []
 	quot_doc.save()
 	quot_doc.submit()
-	return create_sales_order(quot_doc)
+	return create_sales_order(quot_doc,payment_date)
 
-def create_sales_order(quot_doc):
+def create_sales_order(quot_doc,payment_date):
 	so_doc = make_sales_order(quot_doc.name)
-	transaction_date = datetime.strptime(so_doc.transaction_date, "%Y-%m-%d")
-	so_doc.delivery_date = (transaction_date + timedelta(days=7)).date()
+	if payment_date:
+		payment_date = datetime.strptime(payment_date, "%d/%m/%Y").strftime("%Y-%m-%d")
+		so_doc.delivery_date = datetime.strptime(payment_date, "%Y-%m-%d")
+	else:
+		transaction_date = datetime.strptime(so_doc.transaction_date, "%Y-%m-%d")
+		so_doc.delivery_date = (transaction_date + timedelta(days=7)).date()
 	so_doc.payment_schedule = []
 	so_doc.flags.ignore_permissions=True
 	so_doc.save()

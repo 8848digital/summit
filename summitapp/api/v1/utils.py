@@ -69,6 +69,7 @@ def get_item_field_values(item, customer_id, field_names, url_type = "product"):
         'price': lambda: {'price': get_item_price(item.get("name"), customer_id, get_price_list(customer_id))[0]},
         'display_tag': lambda: {'display_tag': item.get('display_tag') or frappe.get_list("Tags MultiSelect", {"parent": item.name}, pluck='tag', ignore_permissions=True)},
         'url': lambda: {'url': get_product_url(item, url_type)},
+		'variant': lambda: {'variant':get_variant_details(item.get('item_code'))},
         'brand_video_url': lambda: {'brand_video_url': frappe.get_value('Brand', item.get('brand'), ['brand_video_link']) or None},
 		'size_chart': lambda: {'size_chart': frappe.get_value('Size Chart', item.get('size_chart'), 'chart')},
 		'slide_img': lambda: {'slide_img': get_slide_images(item.get('name'), False)},
@@ -321,3 +322,18 @@ def create_user_tracking(kwargs, page):
 		})
 	doc.insert(ignore_permissions=True)
 	frappe.db.commit()
+
+def get_variant_details(item_code):
+	item = frappe.db.get_all('Item', filters={'variant_of': item_code}, fields=['name as item_code'])
+	for i in item:
+		item_doc = frappe.get_doc('Item', i)
+		i['attr'] = {}
+		for attr in item_doc.attributes:
+			if attr.attribute == "Category":
+				attr_abbr = frappe.db.get_value('Item Attribute Value', {'parent': attr.attribute, 'attribute_value': attr.attribute_value}, "abbr")
+			else:
+				attr_abbr = attr.attribute_value
+			i['attr'][attr.attribute] = attr_abbr
+		for key, val in i['attr'].items():
+			i[key] = val
+	return item	
