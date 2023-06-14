@@ -14,8 +14,8 @@ def get_list(kwargs):
 			return error_response('Please login as a customer')
 
 		customer = frappe.get_value("Customer",{'email':email})
-		result, grand_total, grand_total_excluding_tax, total_weight = get_quotation_details(customer)
-		return {'msg': 'success', 'data': result, 'grand_total_including_tax': grand_total,'grand_total_excluding_tax': grand_total_excluding_tax, "grand_total_weight": total_weight}
+		result = get_quotation_details(customer)
+		return {'msg': 'success', 'data': result}
 	except Exception as e:
 		frappe.logger('cart').exception(e)
 		return error_response(e)
@@ -120,6 +120,7 @@ def get_quotation_details(customer=None):
 	grand_total = 0
 	item_fields = []
 	grand_total_excluding_tax = 0
+	result = {}
 	for quot in quotations:
 		quot_doc = frappe.get_doc('Quotation', quot['name'])
 		grand_total = quot_doc.rounded_total or quot_doc.grand_total
@@ -133,9 +134,12 @@ def get_quotation_details(customer=None):
 			'cust_name': quot_doc.get("cust_name"),
 			'transaction_date': quot_doc.transaction_date,
 			'common_comment': quot_doc.get("common_comment"),
-			'categories': item_fields
+			'categories': item_fields,
+			'grand_total_including_tax': grand_total,
+			'grand_total_excluding_tax': grand_total_excluding_tax, 
+			"grand_total_weight": total_weight
 		}
-	return result, grand_total, grand_total_excluding_tax, total_weight
+	return result
 
 def get_processed_cart(quot_doc):
 	item_dict = {}
