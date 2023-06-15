@@ -131,6 +131,7 @@ def get_quotation_details(customer=None):
 			'name':  quot_doc.name,
 			'total_qty':  quot_doc.total_qty,
 			'colour': quot_doc.get("colour"),
+			'purity': quot_doc.get("purity"),
 			'cust_name': quot_doc.get("cust_name"),
 			'transaction_date': quot_doc.transaction_date,
 			'common_comment': quot_doc.get("common_comment"),
@@ -142,65 +143,63 @@ def get_quotation_details(customer=None):
 	return result
 
 def get_processed_cart(quot_doc):
-	item_dict = {}
-	category_wise_item = {}
-	total_weight = 0
-	for row in quot_doc.items:
-		item_doc = frappe.db.get_value("Item", row.item_code, "*")
-		if row.item_code not in item_dict:
-			total_weight += row.total_size_weight
-			item_dict[row.item_code] = {
-				"item_code": row.item_code,
-				"bom_factory_code": item_doc.get('bom_factory_code'),
-				"weight_abbr": item_doc.get('weight_abbr'),
-				"net_weight": item_doc.get('net_weight'),
-				"bar_code_image": get_bar_code_image(row.item_code),
-				"category": item_doc.get('category'),
-				"colour": item_doc.get('colour'),
-				"order": [{"qty": row.qty, "size": row.get("size"), "colour": row.get("colour"), "weight": round(row.get("total_size_weight"), 3)}],
-				"weight_per_unit": row.weight_per_unit,
-				"purity": row.get('purity'),
-				"image": row.get('image'),
-				"total_weight": round(row.get("total_size_weight"), 3),
-				"remark": row.get("remark"),
-				"wastage": row.get("wastage"),
-				'tax': flt(get_item_wise_tax(quot_doc.taxes).get(item_doc.name, {}).get('tax_amount', 0), 2),
-				'min_order_qty':  item_doc.get("min_order_qty"),
-				'brand_img': frappe.get_value('Brand', {'name': item_doc.get('brand')}, 'image'),
-				'product_url': get_product_url(item_doc),
-				'in_stock_status': True if get_stock_info(item_doc.name, 'stock_qty') != 0 else False,
-				'image_url': get_slide_images(row.item_code, True),
-				'store_pickup_available': item_doc.get("store_pick_up_available", "No"),
-				'home_delivery_available': item_doc.get("home_delivery_available", "No")
-			}
-		else:
-			total_weight += row.total_size_weight
-			item_dict[row.item_code]["order"].append(
-				{"qty": row.qty, "size": row.size, "colour": row.get("colour"), "image": row.get('image'), "weight": row.total_size_weight, "wastage": row.wastage}
-			)
-			item_dict[row.item_code]["total_weight"] += round(row.total_size_weight, 3)
-		
-		existing_cat = category_wise_item.get(item_doc.category)
-		wt = 0
-		item_list = [row.item_code]
-		if existing_cat:
-			wt = existing_cat.get("wt") + round(row.total_size_weight, 3)
-			item_list = existing_cat.get('item_list', [])
-			if row.item_code not in item_list:
-				item_list.append(row.item_code)
-		category_wise_item[item_doc.category] = {
-			'wt': wt,
-			'item_list': item_list
-		}
-	
-	processed = [{
-		"category": category,
-		"parent_categories": get_parent_categories(item_doc.category, True, name_only=True),
-		"total_weight": items['wt'],
-		"orders": [item_dict.get(item) for item in items['item_list']]
-	} for category, items in category_wise_item.items()]
-	
-	return processed, round(total_weight, 3)
+    item_dict = {}
+    category_wise_item = {}
+    total_weight = 0
+    for row in quot_doc.items:
+        item_doc = frappe.db.get_value("Item", row.item_code, "*")
+        if row.item_code not in item_dict:
+            total_weight += row.total_size_weight
+            item_dict[row.item_code] = {
+                "item_code": row.item_code,
+                "bom_factory_code": item_doc.get('bom_factory_code'),
+                "weight_abbr": item_doc.get('weight_abbr'),
+                "net_weight": item_doc.get('net_weight'),
+                "bar_code_image": get_bar_code_image(row.item_code),
+                "category": item_doc.get('category'),
+                "colour": item_doc.get('colour'),
+                "order": [{"qty": row.qty, "size": row.get("size"), "colour": row.get("colour"), "weight": round(row.get("total_size_weight"), 3)}],
+                "weight_per_unit": row.weight_per_unit,
+                "purity": row.get('purity'),
+                "image": row.get('image'),
+                "total_weight": round(row.get("total_size_weight"), 3),
+                "remark": row.get("remark"),
+                "wastage": row.get("wastage"),
+                'tax': flt(get_item_wise_tax(quot_doc.taxes).get(item_doc.name, {}).get('tax_amount', 0), 2),
+                'min_order_qty': item_doc.get("min_order_qty"),
+                'brand_img': frappe.get_value('Brand', {'name': item_doc.get('brand')}, 'image'),
+                'product_url': get_product_url(item_doc),
+                'in_stock_status': True if get_stock_info(item_doc.name, 'stock_qty') != 0 else False,
+                'image_url': get_slide_images(row.item_code, True),
+                'store_pickup_available': item_doc.get("store_pick_up_available", "No"),
+                'home_delivery_available': item_doc.get("home_delivery_available", "No")
+            }
+        else:
+            total_weight += row.total_size_weight
+            item_dict[row.item_code]["order"].append(
+                {"qty": row.qty, "size": row.size, "colour": row.get("colour"), "image": row.get('image'), "weight": row.total_size_weight, "wastage": row.wastage}
+            )
+            item_dict[row.item_code]["total_weight"] += round(row.total_size_weight, 3)
+
+        existing_cat = category_wise_item.get(item_doc.category, {"wt": 0, "item_list": []})
+        wt = existing_cat.get("wt") + round(row.total_size_weight, 3)
+        item_list = existing_cat.get('item_list', [])
+        if row.item_code not in item_list:
+            item_list.append(row.item_code)
+        category_wise_item[item_doc.category] = {
+            'wt': wt,
+            'item_list': item_list
+        }
+    processed = [
+        {
+            "category": category,
+            "parent_categories": get_parent_categories(item_doc.category, True, name_only=True),
+            "total_weight": sum([item_dict.get(item)["total_weight"] for item in items['item_list']]),
+            "orders": [item_dict.get(item) for item in items['item_list']]
+        }
+        for category, items in category_wise_item.items()
+    ]
+    return processed, round(total_weight, 3)
 
 def get_order_items(item_doc,item):
 	if item_doc:
@@ -228,7 +227,7 @@ def get_bar_code_image(item_code):
 	barcode_path = frappe.get_site_path()+'/public/files/'
 	item_bar_code = Code128(item_code, writer=ImageWriter())	
 	item_bar_code.save(barcode_path + image_name)  
-	return frappe.utils.get_url() + f'/files/{image_name}.png'
+	return f'/files/{image_name}.png'
 
 def get_item_wise_tax(taxes):
 	itemised_tax = {}
