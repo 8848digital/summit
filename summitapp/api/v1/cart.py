@@ -159,7 +159,7 @@ def get_processed_cart(quot_doc):
                 "category": item_doc.get('category'),
                 "colour": item_doc.get('colour'),
                 "order": [{"qty": row.qty, "size": row.get("size"), "colour": row.get("colour"), "weight": round(row.get("total_size_weight"), 3)}],
-                "weight_per_unit": row.weight_per_unit,
+                "weight_per_unit": row.get("weight_per_unit"),
                 "purity": row.get('purity'),
                 "image": row.get('image'),
                 "total_weight": round(row.get("total_size_weight"), 3),
@@ -291,41 +291,36 @@ def create_cart(session_id = frappe.session.user, party_name = None):
 		quot_doc.company_gstin = company_addr.get("gstin")
 	return quot_doc
 
-def add_item_to_cart(item_list, session, fields = {}):
-	# quotation = quot_doc
-	customer_id = frappe.db.get_value('Customer', {'email': frappe.session.user})
-	quotation = create_cart(session, customer_id)
-	price_list = get_price_list(customer_id)
-	quotation.update(fields)
-	quotation.selling_price_list = price_list
-	for item in item_list:
-		quotation_items = quotation.get("items", {"item_code": item.get("item_code")})
-		if not quotation_items:
-			item_data = {
-				"doctype": "Quotation Item",
-				"item_code": item.get("item_code"),
-				"qty": item.get("quantity")
-			}
-			if "size" in item:
-				item_data["size"] = item["size"]
-			if "wastage" in item:
-				item_data["wastage"] = item["wastage"]
-			if "remark" in item:
-				item_data["remark"] = item["remark"]
-			if "colour" in item:
-				item_data["colour"] = item["colour"]
-			if "purity" in item:
-				item_data["purity"] = item["purity"]
-			quotation.append("items", item_data)
-		else:
-			quotation_items[0].qty = item.get("quantity")
-			
-	# apply_cart_settings(quotation=quotation)
-	quotation.flags.ignore_mandatory = True
-	quotation.flags.ignore_permissions = True
-	quotation.payment_schedule = []
-	quotation.save()
-	return f'Item {", ".join([row["item_code"] for row in item_list])} Added To Cart'
+def add_item_to_cart(item_list, session, fields={}):
+    customer_id = frappe.db.get_value('Customer', {'email': frappe.session.user})
+    quotation = create_cart(session, customer_id)
+    price_list = get_price_list(customer_id)
+    quotation.update(fields)
+    quotation.selling_price_list = price_list
+    for item in item_list:
+        item_code = item.get("item_code")
+        item_data = {
+            "doctype": "Quotation Item",
+            "item_code": item_code,
+            "qty": item.get("quantity")
+        }
+        if "size" in item:
+            item_data["size"] = item["size"]
+        if "wastage" in item:
+            item_data["wastage"] = item["wastage"]
+        if "remark" in item:
+            item_data["remark"] = item["remark"]
+        if "colour" in item:
+            item_data["colour"] = item["colour"]
+        if "purity" in item:
+            item_data["purity"] = item["purity"]
+        quotation.append("items", item_data)
+
+    quotation.flags.ignore_mandatory = True
+    quotation.flags.ignore_permissions = True
+    quotation.payment_schedule = []
+    quotation.save()
+    return f'Item {", ".join([row["item_code"] for row in item_list])} Added To Cart'
 
 def delete_item_from_cart(item_list, quot_doc):
 	item_deleted = False
