@@ -61,6 +61,8 @@ def put_products(kwargs):
 		fields = {}
 		if cust_name:=kwargs.get("cust_name"):
 			fields["cust_name"] = cust_name
+		if purity:=kwargs.get("purity"):
+			fields["purity"] = purity
 		added_to_cart = add_item_to_cart(item_list, frappe.session.sid, fields)
 		return success_response(data = added_to_cart)
 	except Exception as e:
@@ -130,11 +132,9 @@ def get_quotation_details(customer=None):
 			'party_name': quot_doc.party_name,
 			'name':  quot_doc.name,
 			'total_qty':  quot_doc.total_qty,
-			'colour': quot_doc.get("colour"),
 			'purity': quot_doc.get("purity"),
 			'cust_name': quot_doc.get("cust_name"),
 			'transaction_date': quot_doc.transaction_date,
-			'common_comment': quot_doc.get("common_comment"),
 			'categories': item_fields,
 			'grand_total_including_tax': grand_total,
 			'grand_total_excluding_tax': grand_total_excluding_tax, 
