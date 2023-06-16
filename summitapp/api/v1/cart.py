@@ -127,79 +127,66 @@ def get_quotation_details(customer=None):
 		quot_doc = frappe.get_doc('Quotation', quot['name'])
 		grand_total = quot_doc.rounded_total or quot_doc.grand_total
 		grand_total_excluding_tax = quot_doc.total
-		item_fields, total_weight = get_processed_cart(quot_doc)
+		item_fields = get_processed_cart(quot_doc)
 		result = {
 			'party_name': quot_doc.party_name,
 			'name':  quot_doc.name,
 			'total_qty':  quot_doc.total_qty,
-			'purity': quot_doc.get("purity"),
-			'cust_name': quot_doc.get("cust_name"),
 			'transaction_date': quot_doc.transaction_date,
 			'categories': item_fields,
 			'grand_total_including_tax': grand_total,
 			'grand_total_excluding_tax': grand_total_excluding_tax, 
-			"grand_total_weight": total_weight
 		}
 	return result
 
 def get_processed_cart(quot_doc):
     item_dict = {}
     category_wise_item = {}
-    total_weight = 0
+    processed = []
+    field_names = get_field_names('Cart')  # Retrieve field names from admin-controlled function
     for row in quot_doc.items:
         item_doc = frappe.db.get_value("Item", row.item_code, "*")
-        if row.item_code not in item_dict:
-            total_weight += row.total_size_weight
-            item_dict[row.item_code] = {
-                "item_code": row.item_code,
-                "bom_factory_code": item_doc.get('bom_factory_code'),
-                "weight_abbr": item_doc.get('weight_abbr'),
-                "net_weight": item_doc.get('net_weight'),
-                "bar_code_image": get_bar_code_image(row.item_code),
-                "category": item_doc.get('category'),
-                "colour": item_doc.get('colour'),
-                "order": [{"qty": row.qty, "size": row.get("size"), "colour": row.get("colour"), "weight": round(row.get("total_size_weight"), 3)}],
-                "weight_per_unit": row.get("weight_per_unit"),
-                "purity": row.get('purity'),
-                "image": row.get('image'),
-                "total_weight": round(row.get("total_size_weight"), 3),
-                "remark": row.get("remark"),
-                "wastage": row.get("wastage"),
-                'tax': flt(get_item_wise_tax(quot_doc.taxes).get(item_doc.name, {}).get('tax_amount', 0), 2),
-                'min_order_qty': item_doc.get("min_order_qty"),
-                'brand_img': frappe.get_value('Brand', {'name': item_doc.get('brand')}, 'image'),
-                'product_url': get_product_url(item_doc),
-                'in_stock_status': True if get_stock_info(item_doc.name, 'stock_qty') != 0 else False,
-                'image_url': get_slide_images(row.item_code, True),
-                'store_pickup_available': item_doc.get("store_pick_up_available", "No"),
-                'home_delivery_available': item_doc.get("home_delivery_available", "No")
-            }
-        else:
-            total_weight += row.total_size_weight
-            item_dict[row.item_code]["order"].append(
-                {"qty": row.qty, "size": row.size, "colour": row.get("colour"), "image": row.get('image'), "weight": row.total_size_weight, "wastage": row.wastage}
-            )
-            item_dict[row.item_code]["total_weight"] += round(row.total_size_weight, 3)
+        computed_fields = {
+            'min_order_qty': lambda: {'min_order_qty': item_doc.get("min_order_qty")},
+            'brand_img': lambda: {'brand_img': frappe.get_value('Brand', {'name': item_doc.get('brand')}, 'image')},
+            'level_three_category_name': lambda: {'level_three_category_name': item_doc.get("level_three_category_name")},
+            'tax': lambda: {'tax': flt(get_item_wise_tax(quot_doc.taxes).get(item_doc.name, {}).get('tax_amount', 0), 2)},
+            'product_url': lambda: {'product_url': get_product_url(item_doc)},
+            'in_stock_status': lambda: {"in_stock_status": True if get_stock_info(item_doc.name, 'stock_qty') != 0 else False},
+            'image_url': lambda: {"image_url": get_slide_images(row.item_code, True)},
+            'details': lambda: {"details": get_item_details(item_doc, row)},
+            'store_pickup_available': lambda: {"store_pickup_available": item_doc.get("store_pick_up_available", "No")},
+            'home_delivery_available': lambda: {"home_delivery_available": item_doc.get("home_delivery_available", "No")},
+        }
 
-        existing_cat = category_wise_item.get(item_doc.category, {"wt": 0, "item_list": []})
-        wt = existing_cat.get("wt") + round(row.total_size_weight, 3)
-        item_list = existing_cat.get('item_list', [])
-        if row.item_code not in item_list:
-            item_list.append(row.item_code)
+        if row.item_code not in item_dict:
+            item_dict[row.item_code] = {}
+        for field_name in field_names:
+            if field_name in computed_fields.keys():
+                item_dict[row.item_code].update(computed_fields[field_name]())
+            else:
+                item_dict[row.item_code].update({field_name: row.get(field_name)})
+
+        existing_cat = category_wise_item.get(item_doc.category)
+        item_list = [row.item_code]
+        if existing_cat:
+            item_list = existing_cat.get('item_list', [])
+            if row.item_code not in item_list:
+                item_list.append(row.item_code)
         category_wise_item[item_doc.category] = {
-            'wt': wt,
-            'item_list': item_list
+            'item_list': item_list,
+            'category': item_doc.category  # Add the category field to the dictionary
         }
     processed = [
         {
-            "category": category,
-            "parent_categories": get_parent_categories(item_doc.category, True, name_only=True),
-            "total_weight": sum([item_dict.get(item)["total_weight"] for item in items['item_list']]),
-            "orders": [item_dict.get(item) for item in items['item_list']]
+            "category": items.get('category'),  # Get the category from the dictionary
+            "parent_categories": get_parent_categories(items.get('category'), True, name_only=True),
+            "orders": [item_dict[item] for item in items['item_list'] if item in item_dict]
         }
         for category, items in category_wise_item.items()
     ]
-    return processed, round(total_weight, 3)
+    return processed
+
 
 def get_order_items(item_doc,item):
 	if item_doc:
@@ -291,30 +278,37 @@ def create_cart(session_id = frappe.session.user, party_name = None):
 		quot_doc.company_gstin = company_addr.get("gstin")
 	return quot_doc
 
-def add_item_to_cart(item_list, session, fields={}):
+def add_item_to_cart(item_list, session,fields={}):
     customer_id = frappe.db.get_value('Customer', {'email': frappe.session.user})
     quotation = create_cart(session, customer_id)
     price_list = get_price_list(customer_id)
     quotation.update(fields)
     quotation.selling_price_list = price_list
     for item in item_list:
-        item_code = item.get("item_code")
-        item_data = {
-            "doctype": "Quotation Item",
-            "item_code": item_code,
-            "qty": item.get("quantity")
-        }
-        if "size" in item:
-            item_data["size"] = item["size"]
-        if "wastage" in item:
-            item_data["wastage"] = item["wastage"]
-        if "remark" in item:
-            item_data["remark"] = item["remark"]
-        if "colour" in item:
-            item_data["colour"] = item["colour"]
-        if "purity" in item:
-            item_data["purity"] = item["purity"]
-        quotation.append("items", item_data)
+        if isinstance(item, dict):
+            item_code = item.get("item_code")
+            quantity = item.get("quantity")
+            if item_code and quantity:
+                quotation_items = quotation.get("items", {"item_code": item_code})
+                if not quotation_items:
+                    item_data = {
+                        "doctype": "Quotation Item",
+                        "item_code": item_code,
+                        "qty": quantity
+                    }
+                    if "size" in item:
+                        item_data["size"] = item["size"]
+                    if "wastage" in item:
+                        item_data["wastage"] = item["wastage"]
+                    if "remark" in item:
+                        item_data["remark"] = item["remark"]
+                    if "colour" in item:
+                        item_data["colour"] = item["colour"]
+                    if "purity" in item:
+                        item_data["purity"] = item["purity"]
+                    quotation.append("items", item_data)
+                else:
+                    quotation_items[0].qty = quantity
 
     quotation.flags.ignore_mandatory = True
     quotation.flags.ignore_permissions = True

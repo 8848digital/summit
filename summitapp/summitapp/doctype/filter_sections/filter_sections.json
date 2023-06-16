@@ -16,7 +16,15 @@
    "label": "Filter Section",
    "options": "Filter Section Setting",
    "reqd": 1
-  }
+  },
+  {
+    "default": "0",
+    "fetch_from": "filter_section.apply_dynamic_filter",
+    "fieldname": "apply_dynamic_filter",
+    "fieldtype": "Check",
+    "label": "Apply Dynamic Filter",
+    "read_only": 1
+   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
