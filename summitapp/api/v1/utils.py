@@ -30,18 +30,23 @@ def check_brand_exist(filters):
 
 
 def get_filter_list(kwargs):
-	filters = {
-		"disabled": 0
-	}
-	display_both_item_and_variant = int(frappe.db.get_value("Web Settings","Web Settings","display_both_item_and_variant"))
-	if display_both_item_and_variant == 1:
-		filters['has_variants'] = 0
-	else:
-		filters['variant_of'] =  ['is', "not set"]
-	for key, val in kwargs.items():
-		if val:
-			filters.update({key: val})
-	return filters
+    filters = {
+        "disabled": 0
+    }
+    display_both_item_and_variant = int(frappe.db.get_value("Web Settings", "Web Settings", "display_both_item_and_variant"))
+    if display_both_item_and_variant == 1:
+        filters['has_variants'] = 0
+        filters['show_on_website'] = 1
+    else:
+        filters['variant_of'] = ['is', "not set"]
+
+    for key, val in kwargs.items():
+        if val:
+            filters.update({key: val})
+    
+    return filters
+
+
 
 def get_field_names(product_type):
     return frappe.db.get_all(
