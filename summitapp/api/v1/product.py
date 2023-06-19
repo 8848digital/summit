@@ -243,10 +243,13 @@ def get_variant_colour(item_code):
 							  {'parent': item_code, 'attribute': 'Colour'}, 'attribute_value')
 	return frappe.get_value('Item Attribute Value', {'attribute_value': colour}, 'abbr')
 
+def get_variant_slug(item_code):
+	return frappe.get_value('Item',{'item_code':item_code},'slug')
 
 def get_variant_info(variant_list):
 	return [{
 			'variant_code': item.name,
+			'slug': get_variant_slug(item.name),
 			'size': get_variant_size(item.name),
 			'colour': get_variant_colour(item.name),
 			'stock': True if get_stock_info(item.name, 'stock_qty') != 0 else False,
