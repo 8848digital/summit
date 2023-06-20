@@ -88,6 +88,8 @@ def get_item_list(doctype, filters):
 
 
 def get_item_url(product_type, category=None, product=None):
+	if product_type is None:
+		product_type = 'product'
 	url_str = f'/{product_type}'
 	if category:
 		url_str += f'/{category}'
