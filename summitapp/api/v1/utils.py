@@ -29,7 +29,7 @@ def check_brand_exist(filters):
 	return any('brand' in i for i in filters)
 
 
-def get_filter_list(kwargs):
+def get_filter_listing(kwargs):
     filters = {
         "disabled": 0
     }
@@ -46,6 +46,15 @@ def get_filter_list(kwargs):
     
     return filters
 
+def get_filter_list(kwargs):
+	filters = {
+		"disabled": 0,
+		"variant_of": ['is', "set"]
+	}
+	for key, val in kwargs.items():
+		if val:
+			filters.update({key: val})
+	return filters
 
 
 def get_field_names(product_type):

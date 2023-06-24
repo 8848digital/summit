@@ -4,7 +4,7 @@ import json
 from frappe.model.db_query import DatabaseQuery
 from frappe.utils.global_search import search
 from frappe.utils import flt, cint, today, add_days
-from summitapp.api.v1.utils import (check_brand_exist, get_filter_list, 
+from summitapp.api.v1.utils import (check_brand_exist, get_filter_list, get_filter_listing,
                                        get_slide_images, get_stock_info, 
 									   get_processed_list, get_item_field_values, 
 									   get_field_names, create_user_tracking)
@@ -41,7 +41,7 @@ def get_list(kwargs):
 			if kwargs.get('item'):
 				filter_args["name"] = frappe.get_value(
 					'Item', {'name': kwargs.get('item')})
-			filters = get_filter_list(filter_args)
+			filters = get_filter_listing(filter_args)
 			type = 'brand-product' if check_brand_exist(filters) else 'product'
 			if field_filters:
 				field_filters = json.loads(field_filters)
