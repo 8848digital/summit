@@ -49,7 +49,6 @@ def get_filter_listing(kwargs):
 def get_filter_list(kwargs):
 	filters = {
 		"disabled": 0,
-		"variant_of": ['is', "set"]
 	}
 	for key, val in kwargs.items():
 		if val:
