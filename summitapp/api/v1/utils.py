@@ -81,6 +81,7 @@ def get_item_field_values(item, customer_id, field_names, url_type = "product"):
         'price': lambda: {'price': get_item_price(item.get("name"), customer_id, get_price_list(customer_id))[0]},
         'display_tag': lambda: {'display_tag': item.get('display_tag') or frappe.get_list("Tags MultiSelect", {"parent": item.name}, pluck='tag', ignore_permissions=True)},
         'url': lambda: {'url': get_product_url(item, url_type)},
+		'category_slug': lambda: {'category_slug': get_category_slug(item)},
 		'variant': lambda: {'variant':get_variant_details(item.get('variant_of'))},
         'brand_video_url': lambda: {'brand_video_url': frappe.get_value('Brand', item.get('brand'), ['brand_video_link']) or None},
 		'size_chart': lambda: {'size_chart': frappe.get_value('Size Chart', item.get('size_chart'), 'chart')},
@@ -99,6 +100,12 @@ def get_item_field_values(item, customer_id, field_names, url_type = "product"):
             item_fields.update({field_name: item.get(field_name)})
     return item_fields
 
+def get_category_slug(item_detail):
+	if not item_detail:
+		return []
+	item_cat = item_detail.get('category')
+	item_cat_slug = frappe.db.get_value('Category',item_cat,'slug')
+	return item_cat_slug
 
 def get_product_url(item_detail, url_type = "product"):
 	if not item_detail:
