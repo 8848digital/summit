@@ -126,7 +126,7 @@ def get_details(kwargs):
 			return error_response("Invalid key 'item'")
 		customer_id = kwargs.get('customer_id') or frappe.db.get_value("Customer", {"email": frappe.session.user}, 'name') if frappe.session.user != "Guest" else None
 		filters = get_filter_list({'slug': item_slug, 'access_level': get_access_level(customer_id)})
-		count, item = get_list_data(filters, None, None, None, limit=1)
+		count, item = get_list_data(None, filters, None, None, None, limit=1)
 		field_names = get_field_names('Details')
 		processed_items = []
 		if item:
@@ -183,7 +183,10 @@ def get_top_categories(kwargs):
 
 
 def get_list_data(order_by, filters, price_range, global_items, page_no, limit, or_filters={}, debug=0):
-    offset = int(page_no) * int(limit)
+    offset =0 
+    if page_no is not None:
+        offset = int(page_no) * int(limit)
+        
     if 'access_level' not in filters:
         filters['access_level'] = 0
 
@@ -202,6 +205,7 @@ def get_list_data(order_by, filters, price_range, global_items, page_no, limit, 
         order_by = 'valuation_rate asc' if price_range != 'high_to_low' else 'valuation_rate desc' if price_range else ''
     else:
         order_by = order_by
+        
     data = frappe.get_list('Item',
                            filters=filters,
                            or_filters=or_filters,
@@ -211,6 +215,7 @@ def get_list_data(order_by, filters, price_range, global_items, page_no, limit, 
                            order_by=order_by,
                            ignore_permissions=ignore_permissions,
                            debug=debug)
+    
     count = get_count("Item", filters=filters, or_filters=or_filters,
                       ignore_permissions=ignore_permissions)
 
@@ -218,6 +223,7 @@ def get_list_data(order_by, filters, price_range, global_items, page_no, limit, 
         data = data[0] if data else []
 
     return count, data
+
 
 
 def get_count(doctype, **args):
