@@ -13,19 +13,23 @@ def get(kwargs):
 		return error_response(e)
 
 def get_items(kwargs):
-	try:
-		catalog_slug = kwargs.get('catalog_slug')
-		catalog = frappe.db.get_value('Catalog', {'slug': catalog_slug})
-		if not catalog:
-			return error_response('Catalog Does Not Exist')
-		item_list = get_item_list(catalog)
-		result = get_item_details({'item': ["in", item_list]}).get('data')
-		for item in result:
-			item['url'] = f"/catalog-product/{catalog_slug}/{item.get('product_slug')}"
-		return success_response(result)
-	except Exception as e:
-		frappe.log_error(frappe.get_traceback(), 'Catalog Error')
-		return error_response(e)
+    try:
+        catalog_slug = kwargs.get('catalog_slug')
+        catalog = frappe.db.get_value('Catalog', {'slug': catalog_slug})
+        if not catalog:
+            return error_response('Catalog Does Not Exist')
+        item_list = get_item_list(catalog)
+        results = []
+        for item in item_list:
+            result = get_item_details({'item': item}).get('data')
+            results.append(result)
+            for item in result:
+                item['url'] = f"/catalog-product/{catalog_slug}/{item.get('product_slug')}"
+        return success_response(results)
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), 'Catalog Error')
+        return error_response(e)
+
 
 def get_item_list(catalog):
 	items = frappe.get_list("Item Child",{"parent":catalog,"parenttype":'Catalog'},pluck='item', ignore_permissions=1)

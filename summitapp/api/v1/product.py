@@ -76,7 +76,6 @@ def get_list(kwargs):
         return error_response(str(e))
 
 
-
 # Whitelisted Function
 def get_variants(kwargs):
 	try:
