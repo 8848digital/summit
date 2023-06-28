@@ -25,8 +25,7 @@ def get_list(kwargs):
         if kwargs.get('customer_id'):
             customer_id = kwargs.get('customer_id')
         elif frappe.session.user != "Guest":
-            customer_id = frappe.db.get_value(
-                "Customer", {"email": frappe.session.user}, 'name')
+            customer_id = frappe.db.get_value("Customer", {"email": frappe.session.user}, 'name')
         else:
             customer_id = None
         access_level = get_access_level(customer_id)
@@ -37,11 +36,11 @@ def get_list(kwargs):
                 child_categories = get_child_categories(category_slug)
                 filter_args["category"] = child_categories
             if kwargs.get('brand'):
-                filter_args["brand"] = frappe.get_value(
-                    'Brand', {'slug': kwargs.get('brand')})
+                filter_args["brand"] = frappe.get_value('Brand', {'slug': kwargs.get('brand')})
+            
             if kwargs.get('item'):
-                filter_args["name"] = frappe.get_value(
-                    'Item', {'name': kwargs.get('item')})
+                filter_args["name"] = frappe.get_value('Item', {'name': kwargs.get('item')})
+            
             filters = get_filter_listing(filter_args)
             type = 'brand-product' if check_brand_exist(filters) else 'product'
             if field_filters:
@@ -59,14 +58,14 @@ def get_list(kwargs):
                 filter_list = json.loads(filter_list)
                 filters, sort_order = append_applied_filters(filters, filter_list)
                 if sort_order:
-                    order_by = 'sequence {}'.format(sort_order)  # Set the order_by parameter
+                    order_by = 'sequence {}'.format(sort_order)
                     del filters['sequence']
             debug = kwargs.get("debug_query", 0)
             count, data = get_list_data(order_by, filters, price_range, None, page_no, limit, or_filters=or_filters, debug=debug)
         else:
             type = 'product'
             global_items = search(search_text, doctype='Item')
-            count, data = get_list_data(None, None, price_range, global_items, page_no, limit, or_filters=or_filters, debug=debug)
+            count, data = get_list_data(None, {}, price_range, global_items, page_no, limit)
         result = get_processed_list(data, customer_id, type)
         total_count = count
         if internal_call:
@@ -74,7 +73,8 @@ def get_list(kwargs):
         return {'msg': 'success', 'data': result, 'total_count': total_count}
     except Exception as e:
         frappe.logger('product').exception(e)
-        return error_response(e)
+        return error_response(str(e))
+
 
 
 # Whitelisted Function
@@ -183,10 +183,9 @@ def get_top_categories(kwargs):
 
 
 def get_list_data(order_by, filters, price_range, global_items, page_no, limit, or_filters={}, debug=0):
-    offset =0 
+    offset = 0
     if page_no is not None:
         offset = int(page_no) * int(limit)
-        
     if 'access_level' not in filters:
         filters['access_level'] = 0
 
@@ -205,7 +204,6 @@ def get_list_data(order_by, filters, price_range, global_items, page_no, limit, 
         order_by = 'valuation_rate asc' if price_range != 'high_to_low' else 'valuation_rate desc' if price_range else ''
     else:
         order_by = order_by
-        
     data = frappe.get_list('Item',
                            filters=filters,
                            or_filters=or_filters,
@@ -215,7 +213,6 @@ def get_list_data(order_by, filters, price_range, global_items, page_no, limit, 
                            order_by=order_by,
                            ignore_permissions=ignore_permissions,
                            debug=debug)
-    
     count = get_count("Item", filters=filters, or_filters=or_filters,
                       ignore_permissions=ignore_permissions)
 
