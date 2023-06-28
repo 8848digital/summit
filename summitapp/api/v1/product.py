@@ -11,67 +11,71 @@ from summitapp.api.v1.utils import (check_brand_exist, get_filter_list, get_filt
 
 # Whitelisted Function
 def get_list(kwargs):
-	try:
-		create_user_tracking(kwargs, "Product Listing")
-		internal_call = kwargs.get("internal", 0)
-		category_slug = kwargs.get('category')
-		page_no = cint(kwargs.get('page_no', 1)) - 1
-		limit = kwargs.get('limit', 20)
-		filter_list = kwargs.get('filter')
-		field_filters = kwargs.get("field_filters")
-		or_filters = kwargs.get("or_filters")
-		price_range = kwargs.get('price_range')
-		search_text = kwargs.get('search_text')
-		if kwargs.get('customer_id'):
-			customer_id = kwargs.get('customer_id')
-		elif frappe.session.user != "Guest":
-			customer_id = frappe.db.get_value(
-				"Customer", {"email": frappe.session.user}, 'name')
-		else:
-			customer_id = None
-		access_level = get_access_level(customer_id)
-		if not search_text:
-			filter_args = {"access_level": access_level}
-			if category_slug:
-				child_categories = get_child_categories(category_slug)
-				filter_args["category"] = child_categories
-			if kwargs.get('brand'):
-				filter_args["brand"] = frappe.get_value(
-					'Brand', {'slug': kwargs.get('brand')})
-			if kwargs.get('item'):
-				filter_args["name"] = frappe.get_value(
-					'Item', {'name': kwargs.get('item')})
-			filters = get_filter_listing(filter_args)
-			type = 'brand-product' if check_brand_exist(filters) else 'product'
-			if field_filters:
-				field_filters = json.loads(field_filters)
-				for value in field_filters.values():
-					if len(value) == 2 and value[0] == 'like':
-						value[1] = f"%{value[1]}%"
-				filters.update(field_filters)
-			if or_filters:
-				or_filters = json.loads(or_filters)
-				for value in or_filters.values():
-					if len(value) == 2 and value[0] == 'like':
-						value[1] = f"%{value[1]}%"
-			if filter_list:
-				filter_list = json.loads(filter_list)
-				filters = append_applied_filters(filters, filter_list)
-			debug = kwargs.get("debug_query", 0)
-			count, data = get_list_data(
-				filters, price_range, None, page_no, limit, or_filters=or_filters, debug = debug)
-		else:
-			type = 'product'
-			global_items = search(search_text, doctype='Item')
-			count, data = get_list_data({}, None, global_items, page_no, limit)
-		result = get_processed_list(data, customer_id, type)
-		total_count = count
-		if internal_call:
-			return result
-		return {'msg': 'success', 'data': result, 'total_count': total_count}
-	except Exception as e:
-		frappe.logger('product').exception(e)
-		return error_response(e)
+    try:
+        create_user_tracking(kwargs, "Product Listing")
+        internal_call = kwargs.get("internal", 0)
+        category_slug = kwargs.get('category')
+        page_no = cint(kwargs.get('page_no', 1)) - 1
+        limit = kwargs.get('limit', 20)
+        filter_list = kwargs.get('filter')
+        field_filters = kwargs.get("field_filters")
+        or_filters = kwargs.get("or_filters")
+        price_range = kwargs.get('price_range')
+        search_text = kwargs.get('search_text')
+        if kwargs.get('customer_id'):
+            customer_id = kwargs.get('customer_id')
+        elif frappe.session.user != "Guest":
+            customer_id = frappe.db.get_value(
+                "Customer", {"email": frappe.session.user}, 'name')
+        else:
+            customer_id = None
+        access_level = get_access_level(customer_id)
+        if not search_text:
+            order_by = None
+            filter_args = {"access_level": access_level}
+            if category_slug:
+                child_categories = get_child_categories(category_slug)
+                filter_args["category"] = child_categories
+            if kwargs.get('brand'):
+                filter_args["brand"] = frappe.get_value(
+                    'Brand', {'slug': kwargs.get('brand')})
+            if kwargs.get('item'):
+                filter_args["name"] = frappe.get_value(
+                    'Item', {'name': kwargs.get('item')})
+            filters = get_filter_listing(filter_args)
+            type = 'brand-product' if check_brand_exist(filters) else 'product'
+            if field_filters:
+                field_filters = json.loads(field_filters)
+                for value in field_filters.values():
+                    if len(value) == 2 and value[0] == 'like':
+                        value[1] = f"%{value[1]}%"
+                filters.update(field_filters)
+            if or_filters:
+                or_filters = json.loads(or_filters)
+                for value in or_filters.values():
+                    if len(value) == 2 and value[0] == 'like':
+                        value[1] = f"%{value[1]}%"
+            if filter_list:
+                filter_list = json.loads(filter_list)
+                filters, sort_order = append_applied_filters(filters, filter_list)
+                if sort_order:
+                    order_by = 'sequence {}'.format(sort_order)  # Set the order_by parameter
+                    del filters['sequence']
+            debug = kwargs.get("debug_query", 0)
+            count, data = get_list_data(order_by, filters, price_range, None, page_no, limit, or_filters=or_filters, debug=debug)
+        else:
+            type = 'product'
+            global_items = search(search_text, doctype='Item')
+            count, data = get_list_data(None, None, price_range, global_items, page_no, limit, or_filters=or_filters, debug=debug)
+        result = get_processed_list(data, customer_id, type)
+        total_count = count
+        if internal_call:
+            return result
+        return {'msg': 'success', 'data': result, 'total_count': total_count}
+    except Exception as e:
+        frappe.logger('product').exception(e)
+        return error_response(e)
+
 
 # Whitelisted Function
 def get_variants(kwargs):
@@ -178,35 +182,42 @@ def get_top_categories(kwargs):
 	return success_response(res)
 
 
-def get_list_data(filters, price_range, global_items, page_no, limit, or_filters={}, debug = 0):
-	offset = flt(page_no)*flt(limit)
-	if 'access_level' not in filters:
-		filters['access_level'] = 0
+def get_list_data(order_by, filters, price_range, global_items, page_no, limit, or_filters={}, debug=0):
+    offset = int(page_no) * int(limit)
+    if 'access_level' not in filters:
+        filters['access_level'] = 0
 
-	if categories := get_allowed_categories(filters.get("category")):
-		filters["category"] = ["in", categories]
-	if brands := get_allowed_brands():
-		if not (filters.get("brand") and filters.get("brand") in brands):
-			filters["brand"] = ["in", brands]
+    if categories := get_allowed_categories(filters.get("category")):
+        filters["category"] = ["in", categories]
+    if brands := get_allowed_brands():
+        if not (filters.get("brand") and filters.get("brand") in brands):
+            filters["brand"] = ["in", brands]
 
-	if global_items is not None:
-		return get_items_via_search(global_items, filters)
+    if global_items is not None:
+        return get_items_via_search(global_items, filters)
 
-	ignore_permissions = frappe.session.user == "Guest"
-	order_by = 'valuation_rate asc' if price_range != 'high_to_low' else 'valuation_rate desc' if price_range else ''
-	data = frappe.get_list('Item',
-						   filters=filters,
-						   or_filters=or_filters,
-						   fields="*",
-						   limit_page_length=limit,
-						   limit_start=offset,
-						   order_by=order_by,
-						   ignore_permissions=ignore_permissions, debug=debug)
-	count = get_count("Item", filters=filters, or_filters=or_filters,
-					  ignore_permissions=ignore_permissions)
-	if limit==1:
-		data=data[0] if data else []
-	return count, data
+    ignore_permissions = frappe.session.user == "Guest"
+
+    if not order_by:
+        order_by = 'valuation_rate asc' if price_range != 'high_to_low' else 'valuation_rate desc' if price_range else ''
+    else:
+        order_by = order_by
+    data = frappe.get_list('Item',
+                           filters=filters,
+                           or_filters=or_filters,
+                           fields="*",
+                           limit_page_length=limit,
+                           limit_start=offset,
+                           order_by=order_by,
+                           ignore_permissions=ignore_permissions,
+                           debug=debug)
+    count = get_count("Item", filters=filters, or_filters=or_filters,
+                      ignore_permissions=ignore_permissions)
+
+    if limit == 1:
+        data = data[0] if data else []
+
+    return count, data
 
 
 def get_count(doctype, **args):
@@ -265,17 +276,20 @@ def variant_thumbnail_reqd(item_code, attribute):
 	return bool(res)
 
 def append_applied_filters(filters, filter_list):
-	section_list = filter_list.get('sections')
-	for section in section_list:
-		# for key in section.items():
-		doc_name = frappe.db.get_value('Filter Section Setting', {
-			'filter_section_name': section['name']}, 'doctype_name')
-		if doc_name == 'Item':
-			field_val = frappe.db.get_value('Filter Section Setting', {
-				'filter_section_name': section['name']}, 'field')
-			# filters.append(["Item", field_val, "in", section['value']])
-			filters.update({field_val: ['in', section['value']]})
-	return filters
+    section_list = filter_list.get('sections')
+    filters_list = list(filters.items())  # Convert filters to a list of key-value tuples
+    sort_order = None  # Initialize sort_order variable
+    for section in section_list:
+        doc_name = frappe.db.get_value('Filter Section Setting', {'filter_section_name': section['name']}, 'doctype_name')
+        if doc_name == 'Item':
+            field_val = frappe.db.get_value('Filter Section Setting', {'filter_section_name': section['name']}, 'field')
+            filters_list.append((field_val, ['in', section['value']]))
+            if field_val == 'sequence':
+                # Get the sort order value from the section's value list
+                sort_order = section['value'][0]
+
+    filters = dict(filters_list)  # Convert filters_list back to a dictionary
+    return filters, sort_order
 
 
 def get_recommendation(kwargs):
