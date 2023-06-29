@@ -22,6 +22,7 @@ def get_list(kwargs):
         or_filters = kwargs.get("or_filters")
         price_range = kwargs.get('price_range')
         search_text = kwargs.get('search_text')
+        currency = kwargs.get('currency')
         if kwargs.get('customer_id'):
             customer_id = kwargs.get('customer_id')
         elif frappe.session.user != "Guest":
@@ -66,7 +67,7 @@ def get_list(kwargs):
             type = 'product'
             global_items = search(search_text, doctype='Item')
             count, data = get_list_data(None, {}, price_range, global_items, page_no, limit)
-        result = get_processed_list(data, customer_id, type)
+        result = get_processed_list(currency, data, customer_id, type)
         total_count = count
         if internal_call:
             return result

@@ -3,6 +3,8 @@ from summitapp.utils import success_response
 from erpnext.utilities.product import adjust_qty_for_expired_items
 from frappe.utils import flt
 from frappe.model.db_query import DatabaseQuery
+from frappe.utils import nowdate
+
 
 
 def validate_pincode(kwargs):
@@ -63,23 +65,25 @@ def get_field_names(product_type):
         pluck='field'
     )
 
-def get_processed_list(items, customer_id, url_type = "product"):
+def get_processed_list(currency,items, customer_id, url_type = "product"):
     field_names = get_field_names('List')
     processed_items = []
     for item in items:
-        item_fields = get_item_field_values(item, customer_id, field_names, url_type)
+        item_fields = get_item_field_values(currency,item, customer_id, field_names, url_type)
         processed_items.append(item_fields)
     return processed_items
 
-def get_item_field_values(item, customer_id, field_names, url_type = "product"):
+def get_item_field_values(currency,item, customer_id, field_names, url_type = "product"):
     computed_fields = {
         'image_url': lambda: {'image_url': get_slide_images(item.get('name'), True)},
         'status': lambda: {'status': 'template' if item.get('has_variants') else 'published'},
         'in_stock_status': lambda: {'in_stock_status': True if get_stock_info(item.get('name'), 'stock_qty') != 0 else False},
         'brand_img': lambda: {'brand_img': frappe.get_value('Brand', item.get('brand'), ['image']) or None},
-        'mrp_price': lambda: {'mrp_price': get_item_price(item.get("name"), customer_id, get_price_list(customer_id))[1]},
-        'price': lambda: {'price': get_item_price(item.get("name"), customer_id, get_price_list(customer_id))[0]},
-        'display_tag': lambda: {'display_tag': item.get('display_tag') or frappe.get_list("Tags MultiSelect", {"parent": item.name}, pluck='tag', ignore_permissions=True)},
+        'mrp_price': lambda: {'mrp_price': get_item_price(currency,item.get("name"), customer_id, get_price_list(customer_id))[1]},
+        'price': lambda: {'price': get_item_price(currency,item.get("name"), customer_id, get_price_list(customer_id))[0]},
+        'currency':lambda:{'currency':get_currency(currency)},
+		'currency_symbol':lambda:{'currency_symbol':get_currency_symbol(currency)},
+		'display_tag': lambda: {'display_tag': item.get('display_tag') or frappe.get_list("Tags MultiSelect", {"parent": item.name}, pluck='tag', ignore_permissions=True)},
         'url': lambda: {'url': get_product_url(item, url_type)},
 		'category_slug': lambda: {'category_slug': get_category_slug(item)},
 		'variant': lambda: {'variant':get_variant_details(item.get('variant_of'))},
@@ -107,6 +111,18 @@ def get_category_slug(item_detail):
 	item_cat_slug = frappe.db.get_value('Category',item_cat,'slug')
 	return item_cat_slug
 
+def get_currency(currency):
+    if currency is None:
+        currency = 'INR'
+    currency_doc = frappe.get_doc("Currency", currency)
+    return currency_doc.get("currency_name", currency)
+
+def get_currency_symbol(currency):
+    if currency is None:
+        currency = 'INR'
+    currency_doc = frappe.get_doc("Currency", currency)
+    return currency_doc.get("symbol", currency)
+
 def get_product_url(item_detail, url_type = "product"):
 	if not item_detail:
 		return "/"
@@ -132,21 +148,44 @@ def get_price_list(customer=None):
 		return cust.get("default_price_list") or cust_grp_pl or selling_settings
 	return selling_settings
 
-def get_item_price(item_name, customer_id=None, price_list=None, valuation_rate=0):
-	filter = {
-		'item_code': item_name,
-		'price_list': price_list}
 
-	if customer_id:
-		filter['customer'] = customer_id
-		price, mrp_price = frappe.db.get_value("Item Price", filter, ['price_list_rate', 'strikethrough_rate']) or (0,0)
-		if price:
-			return (price, mrp_price)
+def get_item_price(currency, item_name, customer_id=None, price_list=None, valuation_rate=0):
+    item_filter = {
+        'item_code': item_name,
+        'price_list': price_list
+    }
 
-	filter['customer'] = ["is", "null"]
-	price, mrp_price = frappe.get_value(
-		'Item Price', filter, ['price_list_rate', 'strikethrough_rate']) or (0, 0)
-	return (price, (mrp_price or valuation_rate))
+    if customer_id:
+        item_filter['customer'] = customer_id
+        price, mrp_price = frappe.db.get_value("Item Price", item_filter, ['price_list_rate', 'strikethrough_rate']) or (0, 0)
+        if price:
+            return convert_currency(price, currency), convert_currency(mrp_price, currency)
+
+    item_filter['customer'] = ["is", "null"]
+    price, mrp_price = frappe.get_value('Item Price', item_filter, ['price_list_rate', 'strikethrough_rate']) or (0, 0)
+    return convert_currency(price, currency), convert_currency(mrp_price, currency)
+
+
+def convert_currency(amount, currency):
+    if currency and currency != 'INR':
+        exchange_rate = get_exchange_rate(currency)
+        if exchange_rate:
+            amount = round(amount * exchange_rate, 2)
+    return amount
+
+
+def get_exchange_rate(currency):
+    filters = {
+        "to_currency": currency,
+        "from_currency": "INR"
+    }
+    exchange_rate_doc = frappe.get_list("Currency Exchange", filters=filters, fields=["exchange_rate"])
+    print("exchange rate document",exchange_rate_doc)
+    if exchange_rate_doc:
+        exchange_rate = exchange_rate_doc[0].exchange_rate
+        return exchange_rate
+    else:
+        return None
 
 
 def get_stock_info(item_code, key, with_future_stock=True):
