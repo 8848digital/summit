@@ -130,7 +130,7 @@ def get_details(kwargs):
 		field_names = get_field_names('Details')
 		processed_items = []
 		if item:
-			item_fields = get_item_field_values(item, customer_id, field_names,None)
+			item_fields = get_item_field_values(None,item, customer_id, field_names,None)
 			processed_items.append(item_fields)
 		return {'msg': 'success', 'data': processed_items}
 	except Exception as e:
@@ -382,7 +382,7 @@ def get_detailed_item_list(items, customer_id=None, filters={}):
 			"Customer", {"email": frappe.session.user}, 'name')
 	data = frappe.get_list(
 		'Item', filter, "*", ignore_permissions=True)
-	result = get_processed_list(data, customer_id, "product") 
+	result = get_processed_list(None,data, customer_id, "product") 
 	return result
 
 
