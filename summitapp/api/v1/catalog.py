@@ -22,13 +22,14 @@ def get_items(kwargs):
         results = []
         for item in item_list:
             result = get_item_details({'item': item}).get('data')
-            results.append(result)
-            for item in result:
-                item['url'] = f"/catalog-product/{catalog_slug}/{item.get('product_slug')}"
+            results.extend(result)  # Use extend() instead of append() to add the dictionaries directly
+            for item_dict in result:
+                item_dict['url'] = f"/catalog-product/{catalog_slug}/{item_dict.get('product_slug')}"
         return success_response(results)
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), 'Catalog Error')
         return error_response(e)
+
 
 
 def get_item_list(catalog):
