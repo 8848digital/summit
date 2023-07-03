@@ -84,7 +84,7 @@ def get_wishlist_items(kwargs):
 			customer_id = None
 		# data = get_list_data({"name":["in",wishlist_items]}, None, [])
 		data = frappe.get_list('Item',{"name": ["in", wishlist_items]},"*")
-		result = get_processed_list(data, customer_id, url_type = "product")
+		result = get_processed_list(None,data, customer_id, url_type = "product")
 		response = {'msg': 'success',
 					'wishlist_count':len(wishlist_items),
 					'data': result}
