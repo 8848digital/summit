@@ -21,7 +21,7 @@ import summitapp.api.v1.gl as gl
 import summitapp.api.v1.wishlist as wishlist
 import summitapp.api.v1.seo as seo
 import summitapp.api.v1.utils as utils
-
+import summitapp.api.v1.push_notification as push_notification
 
 class V1():
     def __init__(self):
@@ -46,7 +46,8 @@ class V1():
             "gl": ['get_dealer_ledger', 'get_ledger_summary', "export_ledger"],
             "wishlist": ["add_to_wishlist", "remove_from_wishlist", "get_wishlist_items"],
             "seo": ["get_meta_tags","get_site_map"],
-            "utils": ["validate_pincode", "get_cities", 'get_states', 'get_countries']
+            "utils": ["validate_pincode", "get_cities", 'get_states', 'get_countries'],
+            "push_notification":["get_notification"]
         }
 
     def class_map(self, kwargs):

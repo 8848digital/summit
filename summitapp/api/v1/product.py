@@ -7,7 +7,8 @@ from frappe.utils import flt, cint, today, add_days
 from summitapp.api.v1.utils import (check_brand_exist, get_filter_list, get_filter_listing,
                                        get_slide_images, get_stock_info, 
 									   get_processed_list, get_item_field_values, 
-									   get_field_names, create_user_tracking)
+									   get_field_names, create_user_tracking,
+									   get_default_variant, variant_thumbnail_reqd)
 
 # Whitelisted Function
 def get_list(kwargs):
@@ -270,14 +271,6 @@ def get_variant_info(variant_list):
 			'image': get_slide_images(item.name, False)
 			} for item in variant_list]
 
-def get_default_variant(item_code, attribute):
-	attr = frappe.get_value("Item Variant Attribute", {"variant_of": item_code, "is_default":1, "attribute": attribute},"attribute_value")
-	return frappe.get_value('Item Attribute Value', {'attribute_value': attr}, 'abbr')
-
-def variant_thumbnail_reqd(item_code, attribute):
-	res = frappe.get_value("Item Variant Attribute", {"parent": item_code, "display_thumbnail":1, "attribute": attribute},"name")
-	return bool(res)
-
 def append_applied_filters(filters, filter_list):
     section_list = filter_list.get('sections')
     filters_list = list(filters.items())  # Convert filters to a list of key-value tuples
@@ -478,7 +471,7 @@ def get_web_item_future_stock(item_code, item_warehouse_field, warehouse=None):
 		if stock_qty:
 			return stock_qty[0][0]
 
-def get_default_currency(kwrgs):
+def get_default_currency(kwargs):
     ecom_settings = frappe.get_single('E Commerce Settings')
     company_name = ecom_settings.company
     default_currency = frappe.get_value('Company', company_name, 'default_currency')

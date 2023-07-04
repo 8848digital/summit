@@ -75,7 +75,7 @@ def get_processed_list(currency,items, customer_id, url_type = "product"):
 
 def get_item_field_values(currency,item, customer_id, field_names, url_type = "product"):
     computed_fields = {
-        'image_url': lambda: {'image_url': get_slide_images(item.get('name'), True)},
+        'image_url': lambda: {'image_url': get_default_slide_images(item.get('name'), True,"size")},
         'status': lambda: {'status': 'template' if item.get('has_variants') else 'published'},
         'in_stock_status': lambda: {'in_stock_status': True if get_stock_info(item.get('name'), 'stock_qty') != 0 else False},
         'brand_img': lambda: {'brand_img': frappe.get_value('Brand', item.get('brand'), ['image']) or None},
@@ -89,7 +89,7 @@ def get_item_field_values(currency,item, customer_id, field_names, url_type = "p
 		'variant': lambda: {'variant':get_variant_details(item.get('variant_of'))},
         'brand_video_url': lambda: {'brand_video_url': frappe.get_value('Brand', item.get('brand'), ['brand_video_link']) or None},
 		'size_chart': lambda: {'size_chart': frappe.get_value('Size Chart', item.get('size_chart'), 'chart')},
-		'slide_img': lambda: {'slide_img': get_slide_images(item.get('name'), False)},
+		'slide_img': lambda: {'slide_img': get_default_slide_images(item.get('name'), False,"size")},
 		'features': lambda: {'features': get_features(item.key_features) if item.key_features else []},
 		'why_to_buy': lambda: {'why_to_buy': frappe.db.get_value('Why To Buy', item.get("select_why_to_buy"), "name1")},
 		'prod_specifications': lambda: {'prod_specifications': get_specifications(item)},
@@ -291,6 +291,22 @@ def get_slide_images(item, tile_image):
 				imgs.get('website_image')]
 	return img
 
+def get_default_slide_images(item_doc, tile_image, attribute):
+    if images := get_slide_images(item_doc.name, tile_image):
+        return images
+
+    if item_doc.get("has_variant") and (variant := frappe.get_value("Item Variant Attribute", {"variant_of": item_doc.name, "is_default": 1, "attribute": attribute}, "parent")):
+        return get_slide_images(variant, tile_image)
+
+    return None if tile_image else []
+
+def get_default_variant(item_code, attribute):
+	attr = frappe.get_value("Item Variant Attribute", {"variant_of": item_code, "is_default":1, "attribute": attribute},"attribute_value")
+	return frappe.get_value('Item Attribute Value', {'attribute_value': attr}, 'abbr')
+
+def variant_thumbnail_reqd(item_code, attribute):
+	res = frappe.get_value("Item Variant Attribute", {"parent": item_code, "display_thumbnail":1, "attribute": attribute},"name")
+	return bool(res)
 
 def get_slideshow_value(item_name):
 	return frappe.get_value('Website Item', {'item_code': item_name}, ['slideshow', "website_image"], as_dict=True)
