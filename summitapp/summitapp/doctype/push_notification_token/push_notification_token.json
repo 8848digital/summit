@@ -1,7 +1,6 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:token",
  "creation": "2023-07-04 13:17:12.204259",
  "default_view": "List",
  "doctype": "DocType",
@@ -21,11 +20,10 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-07-04 16:43:26.942011",
+ "modified": "2023-07-04 19:49:49.922685",
  "modified_by": "Administrator",
  "module": "SummitApp",
  "name": "Push Notification Token",
- "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
