@@ -123,6 +123,7 @@ def get_details(kwargs):
 	try:
 		create_user_tracking(kwargs, "Product Detail")
 		item_slug = kwargs.get('item')
+		currency = kwargs.get('currency')
 		if not item_slug:
 			return error_response("Invalid key 'item'")
 		customer_id = kwargs.get('customer_id') or frappe.db.get_value("Customer", {"email": frappe.session.user}, 'name') if frappe.session.user != "Guest" else None
@@ -131,7 +132,7 @@ def get_details(kwargs):
 		field_names = get_field_names('Details')
 		processed_items = []
 		if item:
-			item_fields = get_item_field_values(None,item, customer_id, field_names,None)
+			item_fields = get_item_field_values(currency, item, customer_id, None, field_names)
 			processed_items.append(item_fields)
 		return {'msg': 'success', 'data': processed_items}
 	except Exception as e:
