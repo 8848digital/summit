@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from erpnext.e_commerce.shopping_cart.cart import _get_cart_quotation
 from summitapp.api.v1.cart import calculate_quot_taxes
-from summitapp.api.v1.utils import get_field_names
+from summitapp.api.v1.utils import get_field_names,get_currency,get_currency_symbol
 
 
 
@@ -195,6 +195,8 @@ def get_processed_order(orders,customer):
 			'payment_status':lambda:{"payment_status" : order.get("workflow_state")},
 			'coupon_code':lambda:{"coupon_code": order.get("coupon_code")},
 			'coupon_amount':lambda:{"coupon_amount" : order.get("discount_amount")},
+			'currency':lambda:{'currency':get_currency(order.currency)},
+			'currency_symbol':lambda:{'currency_symbol':get_currency_symbol(order.currency)},
 			'addresses': lambda:{"addresses": get_address(customer, order.customer_address, order.shipping_address_name)},
 			'shipping_method': lambda:{'shipping_method':{
 				"transporter": order.transporter,

@@ -1,7 +1,7 @@
 import frappe
 from summitapp.utils import error_response, success_response, create_temp_user, get_company_address, check_guest_user, get_parent_categories
 from summitapp.api.v1.product import get_stock_info, get_slide_images, get_recommendation, get_product_url
-from summitapp.api.v1.utils import get_price_list,get_field_names
+from summitapp.api.v1.utils import get_price_list,get_field_names,get_currency,get_currency_symbol
 from erpnext.controllers.accounts_controller import get_taxes_and_charges
 from frappe.utils import flt, getdate
 import json
@@ -12,7 +12,6 @@ def get_list(kwargs):
 			email = frappe.session.user
 		else:
 			return error_response('Please login as a customer')
-
 		customer = frappe.get_value("Customer",{'email':email})
 		result = get_quotation_details(customer)
 		return {'msg': 'success', 'data': result}
@@ -63,6 +62,8 @@ def put_products(kwargs):
 			fields["cust_name"] = cust_name
 		if purity:=kwargs.get("purity"):
 			fields["purity"] = purity
+		if currency:=kwargs.get("currency"):
+			fields["currency"] = currency	
 		added_to_cart = add_item_to_cart(item_list, frappe.session.sid, fields)
 		return success_response(data = added_to_cart)
 	except Exception as e:
@@ -155,6 +156,8 @@ def get_processed_cart(quot_doc):
             'in_stock_status': lambda: {"in_stock_status": True if get_stock_info(item_doc.name, 'stock_qty') != 0 else False},
             'image_url': lambda: {"image_url": get_slide_images(row.item_code, True)},
             'details': lambda: {"details": get_item_details(item_doc, row)},
+	    	'currency':lambda:{'currency':get_currency(quot_doc.currency)},
+			'currency_symbol':lambda:{'currency_symbol':get_currency_symbol(quot_doc.currency)},
             'store_pickup_available': lambda: {"store_pickup_available": item_doc.get("store_pick_up_available", "No")},
             'home_delivery_available': lambda: {"home_delivery_available": item_doc.get("home_delivery_available", "No")},
         }
