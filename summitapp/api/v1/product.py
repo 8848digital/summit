@@ -358,7 +358,7 @@ def get_tagged_products(kwargs):
 			return error_response("key missing 'tag'")
 		items = frappe.get_list("Tags MultiSelect", {"tag": kwargs.get(
 			'tag')}, pluck='parent', ignore_permissions=True)
-		res = get_detailed_item_list(items, kwargs.get("customer_id"))
+		res = get_detailed_item_list(items, kwargs.get("customer_id"),None)
 		return success_response(data=res)
 	except Exception as e:
 		frappe.logger('product').exception(e)
