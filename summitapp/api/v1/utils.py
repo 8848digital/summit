@@ -69,13 +69,13 @@ def get_processed_list(currency,items, customer_id, url_type = "product"):
     field_names = get_field_names('List')
     processed_items = []
     for item in items:
-        item_fields = get_item_field_values(currency,item, customer_id, field_names, url_type)
+        item_fields = get_item_field_values(currency,item, customer_id, url_type,field_names)
         processed_items.append(item_fields)
     return processed_items
 
-def get_item_field_values(currency,item, customer_id, field_names, url_type = "product"):
+def get_item_field_values(currency,item, customer_id, url_type,field_names):
     computed_fields = {
-        'image_url': lambda: {'image_url': get_default_slide_images(item.get('name'), True,"size")},
+        'image_url': lambda: {'image_url': get_default_slide_images(item, True,"size")},
         'status': lambda: {'status': 'template' if item.get('has_variants') else 'published'},
         'in_stock_status': lambda: {'in_stock_status': True if get_stock_info(item.get('name'), 'stock_qty') != 0 else False},
         'brand_img': lambda: {'brand_img': frappe.get_value('Brand', item.get('brand'), ['image']) or None},
@@ -89,7 +89,7 @@ def get_item_field_values(currency,item, customer_id, field_names, url_type = "p
 		'variant': lambda: {'variant':get_variant_details(item.get('variant_of'))},
         'brand_video_url': lambda: {'brand_video_url': frappe.get_value('Brand', item.get('brand'), ['brand_video_link']) or None},
 		'size_chart': lambda: {'size_chart': frappe.get_value('Size Chart', item.get('size_chart'), 'chart')},
-		'slide_img': lambda: {'slide_img': get_default_slide_images(item.get('name'), False,"size")},
+		'slide_img': lambda: {'slide_img': get_default_slide_images(item, False,"size")},
 		'features': lambda: {'features': get_features(item.key_features) if item.key_features else []},
 		'why_to_buy': lambda: {'why_to_buy': frappe.db.get_value('Why To Buy', item.get("select_why_to_buy"), "name1")},
 		'prod_specifications': lambda: {'prod_specifications': get_specifications(item)},
@@ -180,7 +180,6 @@ def get_exchange_rate(currency):
         "from_currency": "INR"
     }
     exchange_rate_doc = frappe.get_list("Currency Exchange", filters=filters, fields=["exchange_rate"])
-    print("exchange rate document",exchange_rate_doc)
     if exchange_rate_doc:
         exchange_rate = exchange_rate_doc[0].exchange_rate
         return exchange_rate
