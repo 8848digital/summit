@@ -291,6 +291,7 @@ def append_applied_filters(filters, filter_list):
 
 def get_recommendation(kwargs):
 	# ptype = ["Equivalent", "Suggested", "Mandatory", "Alternate"]
+	currency = kwargs.get("currency")
 	if kwargs.get("item_code"):
 		item_code = kwargs.get("item_code")
 	elif kwargs.get('item'):
@@ -322,7 +323,7 @@ def get_recommendation(kwargs):
 		if kwargs.get("item_only"):
 			return []
 		return error_response("No match found")
-	result = get_detailed_item_list(items, kwargs.get("customer_id"))
+	result = get_detailed_item_list(currency,items, kwargs.get("customer_id"))
 	return success_response(data=result)
 
 
@@ -355,18 +356,19 @@ def get_item(item_code, size, colour):  # for cart
 
 def get_tagged_products(kwargs):
 	try:
+		currency = kwargs.get("currency")
 		if not kwargs.get('tag'):
 			return error_response("key missing 'tag'")
 		items = frappe.get_list("Tags MultiSelect", {"tag": kwargs.get(
 			'tag')}, pluck='parent', ignore_permissions=True)
-		res = get_detailed_item_list(items, kwargs.get("customer_id"),None)
+		res = get_detailed_item_list(currency,items, kwargs.get("customer_id"),None)
 		return success_response(data=res)
 	except Exception as e:
 		frappe.logger('product').exception(e)
 		return error_response(e)
 
 
-def get_detailed_item_list(items, customer_id=None, filters={}):
+def get_detailed_item_list(currency,items, customer_id=None, filters={}):
 	access_level = get_access_level(customer_id)
 	filter = {"name": ["in", items], "access_level": access_level}
 	if filters:
@@ -376,7 +378,7 @@ def get_detailed_item_list(items, customer_id=None, filters={}):
 			"Customer", {"email": frappe.session.user}, 'name')
 	data = frappe.get_list(
 		'Item', filter, "*", ignore_permissions=True)
-	result = get_processed_list(None,data, customer_id, "product") 
+	result = get_processed_list(currency,data, customer_id, "product") 
 	return result
 
 
