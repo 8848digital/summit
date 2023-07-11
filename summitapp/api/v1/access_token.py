@@ -51,15 +51,13 @@ def login(kwargs):
         "email":user.email
     }
 
-def generate_keys(user):
-    user_details = frappe.get_doc('User', user)
+def generate_keys(user_id):
+    user = frappe.get_doc("User", user_id)
+    if not user:
+        return "User not found."
+    api_key = frappe.generate_hash(length=15)
     api_secret = frappe.generate_hash(length=15)
-
-    if not user_details.api_key:
-        api_key = frappe.generate_hash(length=15)
-        user_details.api_key = api_key
-
-    user_details.api_secret = api_secret
-    user_details.save()
-
+    user.api_key = api_key
+    user.api_secret = api_secret
+    user.save(ignore_permissions=True)
     return api_secret
