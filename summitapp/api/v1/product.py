@@ -8,7 +8,7 @@ from summitapp.api.v1.utils import (check_brand_exist, get_filter_list, get_filt
                                        get_slide_images, get_stock_info, 
 									   get_processed_list, get_item_field_values, 
 									   get_field_names, create_user_tracking,
-									   get_default_variant, variant_thumbnail_reqd)
+									   get_default_variant, variant_thumbnail_reqd,get_product_limit)
 
 # Whitelisted Function
 def get_list(kwargs):
@@ -31,6 +31,11 @@ def get_list(kwargs):
         else:
             customer_id = None
         access_level = get_access_level(customer_id)
+        user_role = frappe.session.user
+        product_limit = get_product_limit(user_role,customer_id)
+        # Override the limit if the product limit is specified for the user's role
+        if product_limit is not None:
+            limit = product_limit
         if not search_text:
             order_by = None
             filter_args = {"access_level": access_level}
@@ -39,10 +44,10 @@ def get_list(kwargs):
                 filter_args["category"] = child_categories
             if kwargs.get('brand'):
                 filter_args["brand"] = frappe.get_value('Brand', {'slug': kwargs.get('brand')})
-            
+
             if kwargs.get('item'):
                 filter_args["name"] = frappe.get_value('Item', {'name': kwargs.get('item')})
-            
+
             filters = get_filter_listing(filter_args)
             type = 'brand-product' if check_brand_exist(filters) else 'product'
             if field_filters:
@@ -60,10 +65,11 @@ def get_list(kwargs):
                 filter_list = json.loads(filter_list)
                 filters, sort_order = append_applied_filters(filters, filter_list)
                 if sort_order:
-                    order_by = 'sequence {}'.format(sort_order)
+                    order_by = f'sequence {sort_order}'
                     del filters['sequence']
             debug = kwargs.get("debug_query", 0)
-            count, data = get_list_data(order_by, filters, price_range, None, page_no, limit, or_filters=or_filters, debug=debug)
+            count, data = get_list_data(order_by, filters, price_range, None, page_no, limit, or_filters=or_filters,
+                                        debug=debug)
         else:
             type = 'product'
             global_items = search(search_text, doctype='Item')

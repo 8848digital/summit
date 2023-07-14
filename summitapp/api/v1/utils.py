@@ -413,3 +413,12 @@ def get_variant_details(item_code):
 		for key, val in i['attr'].items():
 			i[key] = val
 	return item	
+
+def get_product_limit(user_role,customer_id):
+    if user_role == "Guest":
+        web_settings = frappe.get_single("Web Settings")
+        return web_settings.product_limit
+    elif customer_id:
+        grp = frappe.db.get_value("Customer", customer_id, 'customer_group')
+        product_limit = frappe.db.get_value("Customer Group", grp, "product_limit") or 0
+        return product_limit
