@@ -88,6 +88,7 @@ def create_user(kwargs):
 		'send_welcome_email': False,
 		'new_password': kwargs.get("password") or frappe.generate_hash(),
 		'first_name': kwargs.get("name"),
+		'language':kwargs.get("language_code"),
 		'roles': [{"doctype": "Has Role", "role": "Customer"}]
 	})
 	user_doc.insert(ignore_permissions=True)

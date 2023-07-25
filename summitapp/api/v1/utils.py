@@ -6,7 +6,6 @@ from frappe.model.db_query import DatabaseQuery
 from frappe.utils import nowdate
 
 
-
 def validate_pincode(kwargs):
 	pincode = True if frappe.db.exists(
 		'Delivery Pincode', kwargs.get('pincode')) else False
@@ -428,6 +427,3 @@ def get_list_product_limit(user_role, customer_id):
             if customer_group_limit is not None and apply_customer_group_limit == 1:
                 return customer_group_limit
     return 0
-
-
-

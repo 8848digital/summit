@@ -23,6 +23,7 @@ import summitapp.api.v1.seo as seo
 import summitapp.api.v1.utils as utils
 import summitapp.api.v1.push_notification as push_notification
 import summitapp.api.v1.access_token as access_token
+import summitapp.api.v1.translation as translation
 
 class V1():
     def __init__(self):
@@ -49,7 +50,8 @@ class V1():
             "seo": ["get_meta_tags","get_site_map"],
             "utils": ["validate_pincode", "get_cities", 'get_states', 'get_countries'],
             "push_notification":["get_notification"],
-            "access_token":["get_access_token","login"]
+            "access_token":["get_access_token","login"],
+            "translation":["get_languages",'get_translation_text']
         }
 
     def class_map(self, kwargs):

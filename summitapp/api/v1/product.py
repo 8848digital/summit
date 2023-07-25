@@ -55,6 +55,7 @@ def build_filters(kwargs, access_level):
     filters = add_field_filters(kwargs, filters)
     type = determine_type(filters)
     filters = add_or_filters(kwargs, filters)
+    filters = get_filter_listing(filters)
     filters, order_by = add_filter_list(kwargs, filters)
     return filters, type, order_by
 
@@ -128,7 +129,6 @@ def get_data(kwargs, filters, type, limit, order_by):
         count, data = get_list_data(None, {}, kwargs.get('price_range'), global_items,
                                     cint(kwargs.get('page_no', 1)) - 1, limit)
     return count, data
-
 
 
 # Whitelisted Function

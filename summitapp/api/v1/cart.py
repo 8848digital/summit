@@ -22,8 +22,10 @@ def get_list(kwargs):
 
 def put_products(kwargs):  
 	try:
-		if frappe.session.user == "Guest":
-			create_temp_user()
+		access_token = None
+		header = frappe.request.headers
+		if frappe.session.user == "Guest" and "Authorization" not in header:
+			access_token = create_temp_user(kwargs)
 		items = kwargs.get('item_list')
 		if isinstance(items,str):
 			items = json.loads(items)
@@ -65,7 +67,11 @@ def put_products(kwargs):
 		if currency:=kwargs.get("currency"):
 			fields["currency"] = currency	
 		added_to_cart = add_item_to_cart(item_list, frappe.session.sid, fields)
-		return success_response(data = added_to_cart)
+		response_data = {
+			"access_token": access_token,
+			"data": added_to_cart  
+		}
+		return success_response(data = response_data)
 	except Exception as e:
 		frappe.logger('cart').exception(e)
 		return error_response(e)
