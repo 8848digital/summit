@@ -5,10 +5,11 @@ from summitapp.utils import error_response, success_response, get_allowed_catego
 def get(kwargs):
 	try:
 		filters = {'parent_category':['is','not set']}
-		if categories := get_allowed_categories():
+		categories = get_allowed_categories()
+		if categories:
 			filters.update({"name": ["in", categories]})
 		category_list = get_item_list('Category', filters)
-		category_list = [{'values': get_sub_cat(cat), **cat} for cat in category_list]
+		category_list = [{'values': get_sub_cat(cat, allowed_categories=categories), **cat} for cat in category_list]
 		return success_response(data=category_list)
 	except Exception as e:
 		frappe.logger('registration').exception(e)
@@ -66,14 +67,14 @@ def breadcrums(kwargs):
 		return error_response('error fetching breadcrums url')
 	
 
-def get_sub_cat(cat, url=None):
+def get_sub_cat(cat, url=None, allowed_categories = None):
 	filters = {'parent_category': cat['name']}
-	if categories := get_allowed_categories():
-		filters.update({"name": ["in", categories]})
+	if allowed_categories:
+		filters.update({"name": ["in", allowed_categories]})
 	sub_cat_list = get_item_list('Category', filters=filters)
 	sub_cat_list = [{
 						'url': prepare_url("product-category", sub_cat['slug'], parent = url), 
-						'values': get_sub_cat(sub_cat), 
+						'values': get_sub_cat(sub_cat, allowed_categories=allowed_categories), 
 						**sub_cat
 					} for sub_cat in sub_cat_list]
 	return sub_cat_list
@@ -88,8 +89,6 @@ def get_item_list(doctype, filters):
 
 
 def get_item_url(product_type, category=None, product=None):
-	if product_type is None:
-		product_type = 'product'
 	url_str = f'/{product_type}'
 	if category:
 		url_str += f'/{category}'

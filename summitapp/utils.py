@@ -138,7 +138,6 @@ def create_temp_user(kwargs):
     usr.api_secret = api_secret
     usr.save()
     access_token = "token "+api_key+":"+api_secret
-    print("ACCESS TOKEN",access_token)
     frappe.local.login_manager.login_as(usr.email)
     return access_token
 
