@@ -1,20 +1,23 @@
 import frappe
 from summitapp.utils import error_response, success_response, get_access_level, get_allowed_categories, get_allowed_brands, get_child_categories
 import json
+from frappe import _
 from frappe.model.db_query import DatabaseQuery
 from frappe.utils.global_search import search
 from frappe.utils import flt, cint, today, add_days
+from summitapp.api.v1.translation import translate_result
 from summitapp.api.v1.utils import (check_brand_exist, get_filter_list, get_filter_listing,
                                        get_slide_images, get_stock_info, 
 									   get_processed_list, get_item_field_values, 
 									   get_field_names, create_user_tracking,
-									   get_default_variant, variant_thumbnail_reqd,get_list_product_limit)
+									   get_default_variant, variant_thumbnail_reqd,
+                                    	get_list_product_limit)
 
 # Whitelisted Function
-
+@frappe.whitelist(allow_guest=True)
 def get_list(kwargs):
     try:
-        create_user_tracking(kwargs, "Product Listing")
+        create_user_tracking(kwargs,("Product Listing")) 
         internal_call = kwargs.get("internal", 0)
         category_slug = kwargs.get('category')
         page_no = cint(kwargs.get('page_no', 1)) - 1
@@ -87,13 +90,16 @@ def get_list(kwargs):
             count, data = get_list_data(None, {}, price_range, global_items, page_no, limit)
         
         result = get_processed_list(currency, data, customer_id, type)
+
+        # Translate the result to the user's selected language
+        language = kwargs.get('language') or frappe.local.lang
+        translated_item_fields = translate_result(result)
+        
         total_count = count
         
         if internal_call:
-            return result
-        
-        return {'msg': 'success', 'data': result, 'total_count': total_count}
-    
+            return translated_item_fields
+        return {'msg':('success'), 'data': translated_item_fields, 'total_count': total_count}
     except Exception as e:
         frappe.logger('product').exception(e)
         return error_response(str(e))
@@ -101,6 +107,7 @@ def get_list(kwargs):
 
 
 # Whitelisted Function
+@frappe.whitelist(allow_guest=True)
 def get_variants(kwargs):
 	try:
 		slug = kwargs.get('item')
@@ -140,29 +147,37 @@ def get_variants(kwargs):
 		return error_response(e)
 
 # Whitelisted Function
-
+@frappe.whitelist(allow_guest=True)
 def get_details(kwargs):
-	try:
-		create_user_tracking(kwargs, "Product Detail")
-		item_slug = kwargs.get('item')
-		currency = kwargs.get('currency')
-		if not item_slug:
-			return error_response("Invalid key 'item'")
-		customer_id = kwargs.get('customer_id') or frappe.db.get_value("Customer", {"email": frappe.session.user}, 'name') if frappe.session.user != "Guest" else None
-		filters = get_filter_list({'slug': item_slug, 'access_level': get_access_level(customer_id)})
-		count, item = get_list_data(None, filters, None, None, None, limit=1)
-		field_names = get_field_names('Details')
-		processed_items = []
-		if item:
-			item_fields = get_item_field_values(currency, item, customer_id, None, field_names)
-			processed_items.append(item_fields)
-		return {'msg': 'success', 'data': processed_items}
-	except Exception as e:
-		frappe.logger('product').exception(e)
-		return error_response(e)
+    try:
+        create_user_tracking(kwargs,("Product Detail"))  
+        item_slug = kwargs.get('item')
+        currency = kwargs.get('currency')
+        language = kwargs.get('language') or frappe.local.lang  
+        if not item_slug:
+            return error_response(("Invalid key 'item'"))  
+
+        customer_id = kwargs.get('customer_id') or frappe.db.get_value("Customer", {"email": frappe.session.user}, 'name') if frappe.session.user != "Guest" else None
+        filters = get_filter_list({'slug': item_slug, 'access_level': get_access_level(customer_id)})
+        count, item = get_list_data(None, filters, None, None, None, limit=1)
+        field_names = get_field_names('Details')
+        processed_items = []
+
+        if item:
+            item_fields = get_item_field_values(currency, item, customer_id, None, field_names)
+            translated_item_fields = {}
+            for fieldname, value in item_fields.items():
+                translated_item_fields[fieldname] = _(value)  
+            processed_items.append(translated_item_fields)
+        return {'msg': ('success'), 'data': processed_items} 
+    except Exception as e:
+        frappe.logger('product').exception(e)
+        return error_response(e)
+
 
 
 # Whitelisted Function
+@frappe.whitelist(allow_guest=True)
 def get_cyu_categories(kwargs):
 	ignore_permissions = frappe.session.user == "Guest"
 	return frappe.get_list('CYU Categories',
@@ -171,7 +186,7 @@ def get_cyu_categories(kwargs):
 							   order_by='sequence',
 							   ignore_permissions=ignore_permissions)
 
-
+@frappe.whitelist(allow_guest=True)
 def get_categories(kwargs):
 	filters = {
 		"enable_category": "Yes"

@@ -12,7 +12,7 @@ from summitapp.api.v1.cart import calculate_quot_taxes
 from summitapp.api.v1.utils import get_field_names,get_currency,get_currency_symbol
 
 
-
+@frappe.whitelist()
 def get_list(kwargs):
 	try:
 		order_id = kwargs.get('order_id')
@@ -28,6 +28,7 @@ def get_list(kwargs):
 		frappe.logger('product').exception(e)
 		return error_response(e)
 
+@frappe.whitelist()
 def get_summary(kwargs):
 	try:
 		id = kwargs.get('id')
@@ -42,6 +43,7 @@ def get_summary(kwargs):
 		return error_response(e)    
 
 # Whitelisted Function
+@frappe.whitelist()
 def get_razorpay_payment_url(kwargs):
 	try:
 		email = frappe.session.user
@@ -58,6 +60,7 @@ def get_razorpay_payment_url(kwargs):
 		return error_response(e)
 
 # Whitelisted Function
+@frappe.whitelist()
 def get_order_id(kwargs):
 	try:
 		email = frappe.session.user

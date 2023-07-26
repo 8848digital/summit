@@ -98,13 +98,12 @@ def generate_guest_keys(user_id):
 
 @frappe.whitelist()
 def generate_api_keys_for_existing_users():
-    # Get a list of all existing users
-    users = frappe.get_all("User", filters={"user_type": "System User"})
-
-    # Iterate through each user and generate API key and secret
+    users = frappe.get_all("User", filters={"user_type": "System User"},fields=["name"])
+    frappe.log_error("users",users)
     for user in users:
         user_doc = frappe.get_doc("User", user.name)
-        if not user_doc.api_key and not user_doc.api_secret:
-            user_doc.api_key = frappe.generate_hash(length=15)
-            user_doc.api_secret = frappe.generate_hash(length=15)
-            user_doc.save(ignore_permissions=True)
+        if not user_doc.get("api_key") and not user_doc.get("api_secret"):
+            frappe.db.set_value("User",user.name,{"api_key":frappe.generate_hash(length=15),"api_secret":frappe.generate_hash(length=15)})
+@frappe.whitelist()
+def generate_keys():
+    frappe.enqueue(generate_api_keys_for_existing_users, timeout=1500) 

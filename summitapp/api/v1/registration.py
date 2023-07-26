@@ -89,7 +89,9 @@ def create_user(kwargs):
 		'new_password': kwargs.get("password") or frappe.generate_hash(),
 		'first_name': kwargs.get("name"),
 		'language':kwargs.get("language_code"),
-		'roles': [{"doctype": "Has Role", "role": "Customer"}]
+		'roles': [{"doctype": "Has Role", "role": "Customer"}],
+		"api_key" : frappe.generate_hash(length=15),  
+		"api_secret" : frappe.generate_hash(length=15) 
 	})
 	user_doc.insert(ignore_permissions=True)
 

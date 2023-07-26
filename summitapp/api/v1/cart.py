@@ -5,9 +5,13 @@ from summitapp.api.v1.utils import get_price_list,get_field_names,get_currency,g
 from erpnext.controllers.accounts_controller import get_taxes_and_charges
 from frappe.utils import flt, getdate
 import json
+from summitapp.api.v1.translation import translate_result
 
+@frappe.whitelist(allow_guest=True)
 def get_list(kwargs):
 	try:
+		if kwargs.get("language"):
+			language = kwargs.get('language') or frappe.local.lang
 		if frappe.session.user != "Guest":
 			email = frappe.session.user
 		else:
@@ -19,7 +23,7 @@ def get_list(kwargs):
 		frappe.logger('cart').exception(e)
 		return error_response(e)
 
-
+@frappe.whitelist(allow_guest=True)
 def put_products(kwargs):  
 	try:
 		access_token = None
@@ -66,7 +70,7 @@ def put_products(kwargs):
 			fields["purity"] = purity
 		if currency:=kwargs.get("currency"):
 			fields["currency"] = currency	
-		added_to_cart = add_item_to_cart(item_list, frappe.session.sid, fields)
+		added_to_cart = add_item_to_cart(item_list, frappe.session.user, fields)
 		response_data = {
 			"access_token": access_token,
 			"data": added_to_cart  
@@ -76,6 +80,7 @@ def put_products(kwargs):
 		frappe.logger('cart').exception(e)
 		return error_response(e)
 
+@frappe.whitelist(allow_guest=True)
 def delete_products(kwargs):  
 	try:
 		if frappe.session.user != "Guest":
@@ -109,7 +114,7 @@ def delete_products(kwargs):
 		frappe.logger('cart').exception(e)
 		return error_response('error deleting items to cart')
 
-
+@frappe.whitelist(allow_guest=True)
 def clear_cart(kwargs):
 	try:
 		if frappe.session.user == "Guest":
@@ -120,6 +125,7 @@ def clear_cart(kwargs):
 	except Exception as e:
 		frappe.logger('product').exception(e)
 		return error_response(e)
+	
 
 def get_quotation_details(customer=None):
 	or_filter = {"owner": frappe.session.user}

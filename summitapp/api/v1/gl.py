@@ -4,6 +4,7 @@ from summitapp.utils import error_response, success_response
 from frappe.utils import getdate, now_datetime
 from frappe.utils.dateutils import get_period, get_dates_from_timegrain
 
+@frappe.whitelist()
 def get_dealer_ledger(kwargs):
 	try:
 		if frappe.session.user == "Guest":

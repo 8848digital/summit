@@ -105,20 +105,6 @@ def send_mail(template_name, recipients, context):
 	return "Email Sent"
 
 
-# def create_temp_user(kwargs):
-# 	frappe.local.login_manager.login_as("Administrator")
-# 	username = random_string(8)
-# 	usr = frappe.get_doc({
-# 		"doctype": "User",
-# 		"email": username+"@random.com",
-# 		"first_name": "TGuest",
-# 		"send_welcome_email": 0,
-# 		'language':kwargs.get("language_code"),
-# 	}).insert()
-# 	usr.add_roles("Customer")
-# 	frappe.local.login_manager.login_as(usr.email)
-# 	return usr.email
-
 def create_temp_user(kwargs):
     frappe.local.login_manager.login_as("Administrator")
     username = random_string(8)
@@ -127,19 +113,18 @@ def create_temp_user(kwargs):
         "email": username + "@random.com",
         "first_name": "TGuest",
         "send_welcome_email": 0,
-        'language': kwargs.get("language_code"),
+        "language": kwargs.get("language_code")
     }).insert()
     usr.add_roles("Customer")
-
-    # Generate API key and secret
-    api_key = frappe.generate_hash(length=15)  
-    api_secret = frappe.generate_hash(length=15) 
+    api_key = frappe.generate_hash(length=15)
+    api_secret = frappe.generate_hash(length=15)
     usr.api_key = api_key
     usr.api_secret = api_secret
     usr.save()
-    access_token = "token "+api_key+":"+api_secret
+    access_token = "token " + api_key + ":" + api_secret
     frappe.local.login_manager.login_as(usr.email)
     return access_token
+
 
 def update_customer(customer=None, data={}):
 	if customer:
