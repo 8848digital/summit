@@ -1,7 +1,6 @@
 import frappe
 from summitapp.utils import check_user_exists,success_response,error_response, resync_cart
 
-
 def signin(kwargs):
 	try:
 		if kwargs.get('usr') == frappe.session.user: return success_response(data='Already Logged In')
