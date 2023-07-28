@@ -1,7 +1,6 @@
 import frappe
 from frappe.utils import random_string
 from frappe.utils.password import get_decrypted_password
-from summitapp.api.v1.access_token import guest_login
 
 # sport_network.utils.check_user_exists
 
@@ -106,24 +105,40 @@ def send_mail(template_name, recipients, context):
 
 
 def create_temp_user(kwargs):
-    frappe.local.login_manager.login_as("Administrator")
-    username = random_string(8)
-    usr = frappe.get_doc({
-        "doctype": "User",
-        "email": username + "@random.com",
-        "first_name": "TGuest",
-        "send_welcome_email": 0,
-        "language": kwargs.get("language_code")
-    }).insert()
-    usr.add_roles("Customer")
-    api_key = frappe.generate_hash(length=15)
-    api_secret = frappe.generate_hash(length=15)
-    usr.api_key = api_key
-    usr.api_secret = api_secret
-    usr.save()
-    access_token = "token " + api_key + ":" + api_secret
-    frappe.local.login_manager.login_as(usr.email)
-    return access_token
+    try:
+        frappe.local.login_manager.login_as("Administrator")
+        username = random_string(8)
+        usr = frappe.get_doc({
+            "doctype": "User",
+            "email": username + "@random.com",
+            "first_name": "TGuest",
+            "send_welcome_email": 0,
+            "language": kwargs.get("language_code")
+        }).insert()
+        usr.add_roles("Customer")
+        frappe.local.login_manager.login_as(usr.email)
+        return usr.email
+    except Exception as e:
+        frappe.logger('cart').exception(e)
+        return error_response(e)
+
+
+def create_access_token(kwargs):
+    try:
+        frappe.local.login_manager.login_as("Administrator")
+        token = random_string(20)
+        email = create_temp_user(kwargs)
+        access = frappe.get_doc({
+            "doctype": "Access Token",
+            "token": token,
+            "email": email
+        }).insert()
+        frappe.local.login_manager.login_as(access.email)
+        return access.token, access.email
+    except Exception as e:
+        frappe.logger('cart').exception(e)
+        return error_response(e)
+
 
 
 def update_customer(customer=None, data={}):

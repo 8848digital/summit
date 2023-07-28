@@ -62,39 +62,6 @@ def generate_keys(user_id):
     user.save(ignore_permissions=True)
     return api_secret
 
-def guest_login(usr,pwd):
-    try:
-        login_manager = frappe.auth.LoginManager()
-        login_manager.authenticate(user=usr, pwd=pwd)
-        login_manager.post_login()
-    except frappe.exceptions.AuthenticationError:
-        frappe.clear_messages()
-        frappe.local.response["message"] = {
-            "success_key":0,
-            "message":"Authentication Error!"
-        }
-
-        return
-
-    api_generate = generate_guest_keys(frappe.session.user)
-    user = frappe.get_doc('User', frappe.session.user)
-    return "token "+user.api_key+":"+api_generate,
-        
-      
-def generate_guest_keys(user_id):
-    user = frappe.get_doc("User", user_id)
-    print("USER ID",user)
-    if not user:
-        return "User not found."
-    api_key = frappe.generate_hash(length=15)
-    print("API KEY",api_key)
-    api_secret = frappe.generate_hash(length=15)
-    print("API SECRET",api_key)
-    user.api_key = api_key
-    user.api_secret = api_secret
-    user.save(ignore_permissions=True)
-    return api_secret
-
 
 @frappe.whitelist()
 def generate_api_keys_for_existing_users():
@@ -107,3 +74,10 @@ def generate_api_keys_for_existing_users():
 @frappe.whitelist()
 def generate_keys():
     frappe.enqueue(generate_api_keys_for_existing_users, timeout=1500) 
+
+
+def auth(kwargs):
+    login_manager = frappe.auth.LoginManager()
+    login_manager.authenticate(user=kwargs.get('usr'),pwd=kwargs.get('pwd'))
+    login_manager.post_login()    
+    return get_access_token(kwargs)

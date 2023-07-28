@@ -14,7 +14,7 @@ from summitapp.api.v1.utils import (check_brand_exist, get_filter_list, get_filt
                                     	get_list_product_limit)
 
 # Whitelisted Function
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def get_list(kwargs):
     try:
         create_user_tracking(kwargs,("Product Listing")) 

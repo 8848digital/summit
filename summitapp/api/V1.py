@@ -43,14 +43,14 @@ class V1():
             "product": ['get_list', 'get_details', 'get_cyu_categories', 'get_variants', 'get_recommendation', 'get_top_categories', "get_tagged_products", "check_availability", "get_categories",'get_default_currency'],
             "registration": ['add_subscriber','customer_signup', 'change_password', 'reset_password', 'send_reset_link', 'create_registration'],
             "seller": ['get'],
-            "signin": ['signin', 'get_user_profile', 'signin_as_guest', 'get_redirecting_urls', 'login_via_token'],
+            "signin": ['signin', 'get_user_profile', 'signin_as_guest', 'get_redirecting_urls', 'login_via_token','existing_user_signin'],
             "store_credit": ['put', 'delete'],
             "gl": ['get_dealer_ledger', 'get_ledger_summary', "export_ledger"],
             "wishlist": ["add_to_wishlist", "remove_from_wishlist", "get_wishlist_items"],
             "seo": ["get_meta_tags","get_site_map"],
             "utils": ["validate_pincode", "get_cities", 'get_states', 'get_countries'],
             "push_notification":["get_notification"],
-            "access_token":["get_access_token","login"],
+            "access_token":['auth',"get_access_token","login"],
             "translation":["get_languages",'get_translation_text']
         }
 
