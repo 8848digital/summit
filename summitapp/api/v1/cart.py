@@ -1,5 +1,6 @@
 import frappe
-from summitapp.utils import error_response, success_response, create_temp_user, get_company_address, check_guest_user, get_parent_categories
+from summitapp.utils import (error_response, success_response, create_temp_user,
+			     get_company_address, check_guest_user, get_parent_categories,create_access_token)
 from summitapp.api.v1.product import get_stock_info, get_slide_images, get_recommendation, get_product_url
 from summitapp.api.v1.utils import get_price_list,get_field_names,get_currency,get_currency_symbol
 from erpnext.controllers.accounts_controller import get_taxes_and_charges
@@ -27,9 +28,9 @@ def get_list(kwargs):
 def put_products(kwargs):  
 	try:
 		access_token = None
-		header = frappe.request.headers
-		if frappe.session.user == "Guest" and "Authorization" not in header:
-			access_token = create_temp_user(kwargs)
+		email = None
+		if frappe.session.user == "Guest":
+			access_token,email = create_access_token(kwargs)
 		items = kwargs.get('item_list')
 		if isinstance(items,str):
 			items = json.loads(items)
@@ -70,10 +71,11 @@ def put_products(kwargs):
 			fields["purity"] = purity
 		if currency:=kwargs.get("currency"):
 			fields["currency"] = currency	
-		added_to_cart = add_item_to_cart(item_list, frappe.session.user, fields)
+		added_to_cart = add_item_to_cart(item_list, access_token, fields)
 		response_data = {
 			"access_token": access_token,
-			"data": added_to_cart  
+			"email":email,
+			"data": added_to_cart,  
 		}
 		return success_response(data = response_data)
 	except Exception as e:
@@ -272,9 +274,9 @@ def calculate_quot_taxes(quot_doc):
 	return {'name': quot_doc.get("name")}
 
 
-def create_cart(session_id = frappe.session.user, party_name = None):
+def create_cart(accees_token, party_name = None):
 	or_filter = {
-		"session_id": session_id
+		"session_id": accees_token
 	}
 	if party_name:
 		or_filter["party_name"] = party_name
@@ -285,7 +287,7 @@ def create_cart(session_id = frappe.session.user, party_name = None):
 		quot_doc = frappe.new_doc('Quotation')
 		quot_doc.order_type = "Shopping Cart"
 		quot_doc.party_name = party_name
-		quot_doc.session_id = session_id
+		quot_doc.session_id = accees_token
 		if check_guest_user(frappe.session.user):
 			quot_doc.gst_category = "Unregistered"
 		company_addr = get_company_address(quot_doc.company)
@@ -293,9 +295,9 @@ def create_cart(session_id = frappe.session.user, party_name = None):
 		quot_doc.company_gstin = company_addr.get("gstin")
 	return quot_doc
 
-def add_item_to_cart(item_list, session,fields={}):
+def add_item_to_cart(item_list, accees_token,fields={}):
     customer_id = frappe.db.get_value('Customer', {'email': frappe.session.user})
-    quotation = create_cart(session, customer_id)
+    quotation = create_cart(accees_token, customer_id)
     price_list = get_price_list(customer_id)
     quotation.update(fields)
     quotation.selling_price_list = price_list
@@ -369,6 +371,7 @@ def request_for_quotation(kwargs):
 	doc.flags.ignore_permissions=1
 	doc.submit()
 	return success_response(data={"quotation_id":new_doc.name})
+
 
 def get_quotation_history(kwargs):
 	if frappe.session.user == "Guest":

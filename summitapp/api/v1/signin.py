@@ -1,5 +1,6 @@
 import frappe
 from summitapp.utils import check_user_exists,success_response,error_response, resync_cart
+from summitapp.api.v1.access_token import auth
 
 def signin(kwargs):
 	try:
@@ -8,9 +9,6 @@ def signin(kwargs):
 			return login_via_google(kwargs)
 		if not check_user_exists(kwargs.get('usr')):
 			return error_response('No account with this Email id')
-		temp_session = frappe.session.user
-		login_manager = frappe.auth.LoginManager()
-		
 		if kwargs.get('with_otp'):
 			# Validate OTP
 			from summitapp.api.v1.otp import verify_otp
@@ -18,18 +16,22 @@ def signin(kwargs):
 				return error_response('Invalid OTP')
 			else:
 				return login_via_otp(kwargs.get('usr'))
-		else:
-			login_manager.authenticate(user=kwargs.get('usr'),pwd=kwargs.get('pwd'))
-			login_manager.post_login()
-			if frappe.response['message'] == 'Logged In':
-				synced = resync_cart(temp_session)
-				frappe.response["data"] = {"is_synced": synced,"message":"Logged In"}
-			else:
-				return error_response("Email or Password is incorrect")
 	except frappe.exceptions.AuthenticationError as e:
 		frappe.logger("registration").exception(e)
 		return error_response(e)
 
+def existing_user_signin(kwargs):
+	try:
+		temp_session = frappe.session.user
+		token = auth(kwargs)
+		if frappe.response['message'] == 'Logged In':
+			synced = resync_cart(temp_session)
+			frappe.response["data"] = {"is_synced": synced,"message":"Logged In", "access_token":token}
+		else:
+			return error_response("Email or Password is incorrect")
+	except frappe.exceptions.AuthenticationError as e:
+		frappe.logger("signin").exception(e)
+		return error_response(e)	
 
 def signin_as_guest(kwargs):
 	try:
