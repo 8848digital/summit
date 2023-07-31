@@ -28,3 +28,16 @@ def translate_result(result):
             translated_item[fieldname] = _(value)
         translated_result.append(translated_item)
     return translated_result
+
+
+def get_user_language(language):
+    print("LANG",language)
+    if language:
+        dummy_user = frappe.get_doc("User", {"language":language})
+        print("dummy user",dummy_user)
+        if dummy_user and dummy_user.enabled:
+            print("dummy",dummy_user.name,dummy_user.enabled)
+            frappe.set_user(dummy_user.name)
+            frappe.local.login_manager.user = dummy_user.name
+            frappe.local.login_manager.post_login()
+
