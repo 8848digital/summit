@@ -2,7 +2,7 @@ import frappe
 from summitapp.utils import (error_response, success_response, create_temp_user,
 			     get_company_address, check_guest_user, get_parent_categories,create_access_token)
 from summitapp.api.v1.product import get_stock_info, get_slide_images, get_recommendation, get_product_url
-from summitapp.api.v1.utils import get_price_list,get_field_names,get_currency,get_currency_symbol
+from summitapp.api.v1.utils import get_price_list,get_field_names,get_currency,get_currency_symbol,get_logged_user
 from erpnext.controllers.accounts_controller import get_taxes_and_charges
 from frappe.utils import flt, getdate
 import json
@@ -11,25 +11,28 @@ from summitapp.api.v1.translation import translate_result
 @frappe.whitelist(allow_guest=True)
 def get_list(kwargs):
 	try:
-		if kwargs.get("language"):
-			language = kwargs.get('language') or frappe.local.lang
-		if frappe.session.user != "Guest":
-			email = frappe.session.user
-		else:
-			return error_response('Please login as a customer')
+		email = None	
+		token = None
+		if not frappe.request.headers.get('Authorization'):
+			error_response('Please Specify Authorization Token')
+		if "token" in frappe.request.headers.get('Authorization'):
+			email = get_logged_user()
+		elif "token" not in frappe.request.headers.get('Authorization'):
+			token = frappe.request.headers.get('Authorization')
 		customer = frappe.get_value("Customer",{'email':email})
-		result = get_quotation_details(customer)
+		result = get_quotation_details(customer,token)
 		return {'msg': 'success', 'data': result}
 	except Exception as e:
 		frappe.logger('cart').exception(e)
 		return error_response(e)
+
 
 @frappe.whitelist(allow_guest=True)
 def put_products(kwargs):  
 	try:
 		access_token = None
 		email = None
-		if frappe.session.user == "Guest":
+		if not frappe.request.headers.get('Authorization'):
 			access_token,email = create_access_token(kwargs)
 		items = kwargs.get('item_list')
 		if isinstance(items,str):
@@ -129,8 +132,8 @@ def clear_cart(kwargs):
 		return error_response(e)
 	
 
-def get_quotation_details(customer=None):
-	or_filter = {"owner": frappe.session.user}
+def get_quotation_details(customer,token):
+	or_filter = {"session_id":token}
 	if customer:
 		or_filter["party_name"] = customer
 	quotations = frappe.get_list("Quotation", filters={'status': 'Draft'}, or_filters=or_filter, fields='*')

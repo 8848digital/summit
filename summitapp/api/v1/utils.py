@@ -4,7 +4,8 @@ from erpnext.utilities.product import adjust_qty_for_expired_items
 from frappe.utils import flt
 from frappe.model.db_query import DatabaseQuery
 from frappe.utils import nowdate
-
+import requests
+from frappe.utils.data import get_url
 
 def validate_pincode(kwargs):
 	pincode = True if frappe.db.exists(
@@ -427,3 +428,22 @@ def get_list_product_limit(user_role, customer_id):
             if customer_group_limit is not None and apply_customer_group_limit == 1:
                 return customer_group_limit
     return 0
+
+def get_logged_user():
+    header = {"Authorization": frappe.request.headers.get('Authorization')}
+    response = requests.post(get_url() + "/api/method/frappe.auth.get_logged_user", headers=header)
+    user = response.json().get("message")
+    print("USER",user)
+    return user
+
+def get_customer_id(kwargs):
+    if kwargs.get('customer_id'):
+        customer_id = kwargs.get('customer_id')
+    elif frappe.request.headers:
+        email = get_logged_user()
+        customer_id = frappe.db.get_value("Customer", {"email": email}, 'name')
+    else:
+        customer_id = None
+    return customer_id
+
+

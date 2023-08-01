@@ -29,53 +29,44 @@ def error_response(err_msg):
 
 
 def resync_cart(session):
-	"""
-	Resync User Session Cart With Logged In User Cart
-	Delete Session Cart After Transfering Items To User Cart.
-	"""
-	try:
-		if name := frappe.db.exists('Quotation', {'owner': session, "status": "Draft"}):
-			data = {"owner": frappe.session.user}
-			if customer := frappe.db.exists("Customer", {"email": frappe.session.user}):
-				data["party_name"] = customer
+    try:
+        if name := frappe.db.exists('Quotation', {'owner': session, "status": "Draft"}):
+            data = {"owner": frappe.session.user}
+            if customer := frappe.db.exists("Customer", {"email": frappe.session.user}):
+                data["party_name"] = customer
 
-			if existing_doc := frappe.db.exists("Quotation", {"owner": frappe.session.user, "status": "Draft"}):
-				# items = frappe.get_list("Quotation Item", {"parent":name},["item_code", "qty"])
-				items = frappe.db.sql(
-					f"select item_code, qty from `tabQuotation Item` where parent = '{name}'", as_dict=True)
-				doc = frappe.get_doc("Quotation", existing_doc)
+            if existing_doc := frappe.db.exists("Quotation", {"owner": frappe.session.user, "status": "Draft"}):
+                items = frappe.db.sql(f"SELECT item_code, qty FROM `tabQuotation Item` WHERE parent = '{name}'", as_dict=True)
+                doc = frappe.get_doc("Quotation", existing_doc)
 
-				for item in items:
-					quotation_items = doc.get(
-						"items", {"item_code": item.item_code})
-					if not quotation_items:
-						doc.append("items", {
-							"doctype": "Quotation Item",
-							"item_code": item.item_code,
-							"qty": item.qty
-						})
-					else:
-						quotation_items[0].qty = item.qty
+                for item in items:
+                    existing_item = next((qi for qi in doc.get("items") if qi.item_code == item.item_code), None)
+                    if existing_item:
+                        existing_item.qty += item.qty
+                    else:
+                        doc.append("items", {
+                            "doctype": "Quotation Item",
+                            "item_code": item.item_code,
+                            "qty": item.qty
+                        })
 
-				if customer and not doc.party_name:
-					doc.party_name = customer
-				doc.flags.ignore_permissions = True
-				doc.save()
-				frappe.delete_doc('Quotation', name, ignore_permissions=True)
+                if customer and not doc.party_name:
+                    doc.party_name = customer
 
-			else:
-				frappe.db.set_value("Quotation", name, data)
-				frappe.db.commit()
+                doc.flags.ignore_permissions = True
+                doc.save()
+                frappe.delete_doc('Quotation', name, ignore_permissions=True)
 
-			# Delete  user
-			frappe.delete_doc(
-				'User', session, ignore_permissions=True, force=True)
-			return "success"
+            else:
+                frappe.db.set_value("Quotation", name, data)
+                frappe.db.commit()
 
-		return {"msg": "no quotation Found", "session": session, "f_session": frappe.session}
-	except Exception as e:
-		frappe.logger('utils').exception(e)
-		return
+        return "success"
+
+    except Exception as e:
+        frappe.logger('utils').exception(e)
+        return
+
 
 
 def send_mail(template_name, recipients, context):
@@ -113,7 +104,8 @@ def create_temp_user(kwargs):
             "email": username + "@random.com",
             "first_name": "TGuest",
             "send_welcome_email": 0,
-            "language": kwargs.get("language_code")
+            "language": kwargs.get("language_code"),
+	    	"user_type":"System User"
         }).insert()
         usr.add_roles("Customer")
         # frappe.local.login_manager.login_as(usr.email)

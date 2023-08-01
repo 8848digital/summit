@@ -1,16 +1,17 @@
 import frappe
 from summitapp.utils import success_response, error_response
-from summitapp.api.v1.utils import get_field_names
+from summitapp.api.v1.utils import get_field_names,get_logged_user
 
 def get(kwargs):
     try:
-        if frappe.session.user != "Guest":
+        if frappe.request.headers:
             if customer := kwargs.get('customer_id'):
                 customer_grp = frappe.db.get_value('Customer', customer, 'customer_group')
             else:
-                customer, customer_grp = frappe.db.get_value("Customer", {'email': frappe.session.user}, ['name', "customer_group"])
+                email = get_logged_user()
+                customer, customer_grp = frappe.db.get_value("Customer", {'email': email}, ['name', "customer_group"])
             banner_list = frappe.db.sql(f"""
-                SELECT
+                SELECT 
                     hb.name,
                     hb.for_customer,
                     if(hb.for_customer, (

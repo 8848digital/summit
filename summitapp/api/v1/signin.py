@@ -1,6 +1,6 @@
 import frappe
 from summitapp.utils import check_user_exists,success_response,error_response, resync_cart
-from summitapp.api.v1.access_token import auth
+from summitapp.api.v1.access_token import get_access_token,auth
 
 def signin(kwargs):
 	try:
@@ -23,16 +23,14 @@ def signin(kwargs):
 def existing_user_signin(kwargs):
 	try:
 		temp_session = frappe.session.user
-		token = auth(kwargs)
-		if frappe.response['message'] == 'Logged In':
-			synced = resync_cart(temp_session)
-			frappe.response["data"] = {"is_synced": synced,"message":"Logged In", "access_token":token}
-		else:
-			return error_response("Email or Password is incorrect")
+		synced = resync_cart(temp_session)
+		token = get_access_token(kwargs)
+		frappe.response["data"] = {"is_synced": synced,"message":"Logged In", "access_token":token}
 	except frappe.exceptions.AuthenticationError as e:
 		frappe.logger("signin").exception(e)
-		return error_response(e)	
+		return error_response(e)
 
+    
 def signin_as_guest(kwargs):
 	try:
 		"""
