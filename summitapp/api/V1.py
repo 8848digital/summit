@@ -32,7 +32,7 @@ class V1():
             'otp': ['send_otp', 'verify_otp'],
             "brand": ['get', 'get_product_list', 'get_product_details'],
             "cart": ['get_list', 'put_products', 'delete_products', 'clear_cart','request_for_quotation','get_quotation_history'],
-            "catalog": ['get', 'get_items'],
+            "catalog": ['get', 'get_items','put','put_items','delete','delete_items'],
             "coupon_code": ['put', 'delete'],
             "customer_address": ['get', 'put'],
             "dealer": ['get_dealer'],
