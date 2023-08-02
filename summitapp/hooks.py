@@ -78,6 +78,12 @@ jinja = {
 	]
 }
 
+scheduler_events = {
+	"cron": {
+		"* * * * *": [
+			"summitapp.api.v1.access_token.generate_keys",
+		]
+	},}
 
 import summitapp.monkey_patches
 # Authentication and authorization
