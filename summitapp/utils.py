@@ -210,7 +210,7 @@ def get_allowed_categories(category_list = []):
 								   "name", "customer_group"], as_dict=1)
 		if cust:
 			categories = frappe.db.get_values(
-				"Category Multiselect", {"parent": cust["name"]}, "name1", pluck=1)
+				"Category Multiselect", {"parent": cust["customer_group"]}, "name1", pluck=1)
 			if not categories and cust.get("customer_group"):
 				categories = frappe.db.get_values(
 					"Category Multiselect", {"parent": cust["customer_group"]}, "name1", pluck=1)
