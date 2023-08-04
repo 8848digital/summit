@@ -215,7 +215,6 @@ def get_web_item_future_stock(item_code, item_warehouse_field, warehouse=None):
 	if not warehouse:
 		warehouse = frappe.db.get_value(
 			"Website Item", {"item_code": item_code}, item_warehouse_field)
-
 	if not warehouse and template_item_code and template_item_code != item_code:
 		warehouse = frappe.db.get_value(
 			"Website Item", {
@@ -229,7 +228,6 @@ def get_web_item_future_stock(item_code, item_warehouse_field, warehouse=None):
 			where date >= CURDATE() and item=%s and warehouse=%s""",
 			(item_code, warehouse),
 		)
-
 		if stock_qty:
 			return stock_qty[0][0]
 
@@ -240,12 +238,10 @@ def get_web_item_qty_in_stock(item_code, item_warehouse_field, warehouse=None):
 	template_item_code, is_stock_item = frappe.db.get_value(
 		"Item", item_code, ["variant_of", "is_stock_item"]
 	)
-
 	default_warehouse = frappe.get_cached_value("Web Settings", None, "default_warehouse")
 	warehouses = [default_warehouse] if default_warehouse else []
 	if not warehouse:
 		warehouse = frappe.db.get_value("Website Item", {"item_code": item_code}, item_warehouse_field)
-
 
 	if not warehouse and template_item_code and template_item_code != item_code:
 		warehouse = frappe.db.get_value(
@@ -262,14 +258,12 @@ def get_web_item_qty_in_stock(item_code, item_warehouse_field, warehouse=None):
 			left join `tabUOM Conversion Detail` C on I.sales_uom = C.uom and C.parent = I.Item_code
 			where S.item_code='{item_code}' and S.warehouse in ('{"', '".join(warehouses)}')"""
 		)
-		
 		if stock_list:
 			for stock_qty in stock_list:
 				stock_qty = adjust_qty_for_expired_items(item_code, [stock_qty], stock_qty[1])
 				total_qty += stock_qty[0][0]
 				if not in_stock:
 					in_stock = stock_qty[0][0] > 0 and 1 or 0
-		
 	return frappe._dict(
 		{"in_stock": in_stock, "stock_qty": total_qty, "is_stock_item": is_stock_item}
 	)
@@ -433,7 +427,6 @@ def get_logged_user():
     header = {"Authorization": frappe.request.headers.get('Authorization')}
     response = requests.post(get_url() + "/api/method/frappe.auth.get_logged_user", headers=header)
     user = response.json().get("message")
-    print("USER",user)
     return user
 
 def get_customer_id(kwargs):

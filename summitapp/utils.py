@@ -33,13 +33,18 @@ def resync_cart(session):
     Delete Session Cart After Transferring Items To User Cart.
     """
     try:
-        if name := frappe.db.exists('Quotation', {'session_id': session, "status": "Draft"}):
+        # Check if a Quotation with the given session ID and status "Draft" exists
+        name = frappe.db.exists('Quotation', {'session_id': session, "status": "Draft"})
+        if name:
             data = {"owner": frappe.session.user}
             customer = frappe.db.get_value("Customer", {"email": frappe.session.user}, "name")
             if customer:
                 data["party_name"] = customer
 
-            if existing_doc := frappe.db.exists("Quotation", {"owner":frappe.session.user, "status": "Draft"}):
+            # Check if an existing Quotation with status "Draft" is owned by the logged-in user
+            existing_doc = frappe.db.exists("Quotation", {"owner": frappe.session.user, "status": "Draft"})
+            if existing_doc:
+                # Transfer items from the session's Quotation to the user's Quotation
                 items = frappe.db.sql(f"select item_code, qty from `tabQuotation Item` where parent = '{name}'", as_dict=True)
                 doc = frappe.get_doc("Quotation", existing_doc)
 
@@ -59,21 +64,26 @@ def resync_cart(session):
 
                 doc.flags.ignore_permissions = True
                 doc.save()
+
+                # Delete the session's Quotation after transferring items
+                frappe.delete_doc('Quotation', name, ignore_permissions=True)
             else:
+                # Set the owner and party_name for the session's Quotation if it's not already owned by the user
                 frappe.db.set_value("Quotation", name, data)
                 frappe.db.commit()
 
+            # Get the guest user's email associated with the session and delete the guest user
             guest_user = frappe.db.get_list("Access Token", filters={"token": session}, fields=['email'])
-            # Delete guest user
             if guest_user:
                 frappe.delete_doc('User', guest_user[0].email, ignore_permissions=True, force=True)
-            
-            return "success"
 
-        return {"msg": "no quotation Found", "session": session, "f_session": frappe.session}
+            return "success"
+        else:
+            return {"msg": "no quotation Found", "session": session, "f_session": frappe.session}
     except Exception as e:
         frappe.logger('utils').exception(e)
         return
+
 
 def send_mail(template_name, recipients, context):
 	frappe.sendmail(
