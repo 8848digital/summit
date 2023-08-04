@@ -22,7 +22,7 @@ def signin(kwargs):
 
 def existing_user_signin(kwargs):
 	try:
-		temp_session = kwargs.get("access_token")
+		temp_session = kwargs.get("guest_token")
 		synced = resync_cart(temp_session)
 		token = get_access_token(kwargs)
 		frappe.response["data"] = {"is_synced": synced,"message":"Logged In", "access_token":token}
