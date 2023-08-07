@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from erpnext.e_commerce.shopping_cart.cart import _get_cart_quotation
 from summitapp.api.v1.cart import calculate_quot_taxes
-from summitapp.api.v1.utils import get_field_names,get_currency,get_currency_symbol
+from summitapp.api.v1.utils import get_field_names,get_currency,get_currency_symbol,get_logged_user,get_guest_user
 
 
 @frappe.whitelist()
@@ -32,9 +32,6 @@ def get_list(kwargs):
 def get_summary(kwargs):
 	try:
 		id = kwargs.get('id')
-		if frappe.session.user == "Guest":
-			return error_response('Please Login As A Customer')
-
 		quot_doc = frappe.get_doc('Quotation', id)
 		data = {'name':'Order Summary', 'id': id, 'values': get_summary_details(quot_doc)}
 		return success_response(data = data)
@@ -63,12 +60,18 @@ def get_razorpay_payment_url(kwargs):
 @frappe.whitelist()
 def get_order_id(kwargs):
 	try:
-		email = frappe.session.user
-		if email == "Guest":
-			return error_response('Please Login As A Customer')
+		email = None	
+		headers = frappe.request.headers
+		if not headers or 'Authorization' not in headers:
+			return error_response('Please Specify Authorization Token')
+		auth_header = headers.get('Authorization')
+		if "token" in auth_header:
+			email = get_logged_user()
+		else:
+			email = get_guest_user(auth_header)
 
-		customer = frappe.get_value("Customer",{'email':email}, 'name')
-		order_id = frappe.db.get_value('Sales Order', {'customer': customer}, 'name')
+		user = frappe.get_value("User",{'email':email}, 'email')
+		order_id = frappe.db.get_value('Sales Order', {'owner': user}, 'name')
 		
 		return success_response(data=order_id)
 	except Exception as e:
@@ -92,9 +95,15 @@ def get_payment_details(kwargs):
 
 def place_order(kwargs):
 	try:
-		email = frappe.session.user
-		if email == "Guest":
-			return error_response('Please Login As A Customer')	
+		email = None	
+		headers = frappe.request.headers
+		if not headers or 'Authorization' not in headers:
+			return error_response('Please Specify Authorization Token')
+		auth_header = headers.get('Authorization')
+		if "token" in auth_header:
+			email = get_logged_user()
+		else:
+			email = get_guest_user(auth_header)
 		order_id = kwargs.get('order_id')
 		common_comment = kwargs.get('common_comment')
 		payment_date = kwargs.get('payment_date')
@@ -352,8 +361,6 @@ def return_replace_item(kwargs):
 		return error_response(e)
 
 def get_order_details(kwargs):
-	if frappe.session.user == "Guest":
-		return "Please login first"
 	if not kwargs.get('order_id'):
 		return "Invalid Order Id"
 	try:

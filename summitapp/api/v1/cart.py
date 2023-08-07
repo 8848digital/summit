@@ -2,7 +2,8 @@ import frappe
 from summitapp.utils import (error_response, success_response, create_temp_user,
 			     get_company_address, check_guest_user, get_parent_categories,create_access_token)
 from summitapp.api.v1.product import get_stock_info, get_slide_images, get_recommendation, get_product_url
-from summitapp.api.v1.utils import get_price_list,get_field_names,get_currency,get_currency_symbol,get_logged_user
+from summitapp.api.v1.utils import (get_price_list,get_field_names,get_guest_user,
+				    get_currency,get_currency_symbol,get_logged_user)
 from erpnext.controllers.accounts_controller import get_taxes_and_charges
 from frappe.utils import flt, getdate
 import json
@@ -10,21 +11,23 @@ from summitapp.api.v1.translation import translate_result
 
 @frappe.whitelist(allow_guest=True)
 def get_list(kwargs):
-	try:
-		email = None	
-		token = None
-		if not frappe.request.headers.get('Authorization'):
-			error_response('Please Specify Authorization Token')
-		if "token" in frappe.request.headers.get('Authorization'):
-			email = get_logged_user()
-		elif "token" not in frappe.request.headers.get('Authorization'):
-			token = frappe.request.headers.get('Authorization')
-		customer = frappe.get_value("Customer",{'email':email})
-		result = get_quotation_details(customer,token)
-		return {'msg': 'success', 'data': result}
-	except Exception as e:
-		frappe.logger('cart').exception(e)
-		return error_response(e)
+    try:
+        email = None	
+        token = None
+        headers = frappe.request.headers
+        if not headers or 'Authorization' not in headers:
+            return error_response('Please Specify Authorization Token')
+        auth_header = headers.get('Authorization')
+        if "token" in auth_header:
+            email = get_logged_user()
+        else:
+            token = auth_header
+        customer = frappe.get_value("Customer", {'email': email})
+        result = get_quotation_details(customer, token)
+        return {'msg': 'success', 'data': result}
+    except Exception as e:
+        frappe.logger('cart').exception(e)
+        return error_response(e)
 
 
 @frappe.whitelist(allow_guest=True)
@@ -88,16 +91,20 @@ def put_products(kwargs):
 @frappe.whitelist(allow_guest=True)
 def delete_products(kwargs):  
 	try:
-		if frappe.session.user != "Guest":
-			email = frappe.session.user
+		email = None	
+		headers = frappe.request.headers
+		if not headers or 'Authorization' not in headers:
+			return error_response('Please Specify Authorization Token')
+		auth_header = headers.get('Authorization')
+		if "token" in auth_header:
+			email = get_logged_user()
 		else:
-			return error_response('Please Login To Continue')
-
+			email = get_guest_user(auth_header)
 		item_code = kwargs.get('item_code')
 		quotation_id = kwargs.get("quotation_id")
-		customer = frappe.db.get_value('Customer', {"email": email})
+		owner = frappe.db.get_value('User', {"email": email})
 		if not quotation_id:
-			quotation_id = frappe.db.exists("Quotation",{'party_name': customer, 'status': 'Draft'})
+			quotation_id = frappe.db.exists("Quotation",{'owner': owner, 'status': 'Draft'})
 		if not quotation_id:
 			return error_response("Cart not found")
 		quot_doc = frappe.get_doc('Quotation', quotation_id)
@@ -122,8 +129,6 @@ def delete_products(kwargs):
 @frappe.whitelist(allow_guest=True)
 def clear_cart(kwargs):
 	try:
-		if frappe.session.user == "Guest":
-			return error_response('Please login as a customer')
 		quotation_id = kwargs.get('quotation_id')
 		if not quotation_id: return error_response('Quotation Not Found')
 		frappe.delete_doc("Quotation",quotation_id,ignore_permissions=True, ignore_missing=True)
@@ -337,22 +342,21 @@ def add_item_to_cart(item_list, accees_token,fields={}):
     return f'Item {", ".join([row["item_code"] for row in item_list])} Added To Cart'
 
 def delete_item_from_cart(item_list, quot_doc):
-	item_deleted = False
-	for item in item_list:
-		quotation_items = quot_doc.get("items", {"item_code": item})
-		if quotation_items and len(quot_doc.get("items",[])) == 1:
-			frappe.delete_doc("Quotation",quot_doc.name,ignore_permissions=True)
-			return "Item Deleted"
-		elif quotation_items:
-			frappe.db.delete('Quotation Item', 
-							{'parent': quot_doc.name, 'item_code': item})
-			quot_doc.reload()
-			item_deleted = True
-	if item_deleted:
-		quot_doc.reload()
-		quot_doc.save(ignore_permissions=True)
-		return 'Item Deleted'
-	return f"Following Items: {', '.join(item_list)} do not exist in cart!"
+    item_deleted = False
+    for item in item_list:
+        quotation_items = quot_doc.get("items")
+        if quotation_items and len(quot_doc.get("items", [])) == 1:
+            frappe.delete_doc("Quotation", quot_doc.name, ignore_permissions=True)
+            return "Item Deleted"
+        elif quotation_items:
+            frappe.db.delete('Quotation Item', {'parent': quot_doc.name, 'item_code': item})
+            quot_doc.reload()
+            item_deleted = True
+    if item_deleted:
+        quot_doc.reload()
+        quot_doc.save(ignore_permissions=True)
+        return 'Item Deleted'
+    return f"Following Items: {', '.join(item_list)} do not exist in cart!"
 
 
 def get_item_details(item_doc, item_row):

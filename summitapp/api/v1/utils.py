@@ -1,5 +1,5 @@
 import frappe
-from summitapp.utils import success_response
+from summitapp.utils import success_response, error_response
 from erpnext.utilities.product import adjust_qty_for_expired_items
 from frappe.utils import flt
 from frappe.model.db_query import DatabaseQuery
@@ -439,4 +439,7 @@ def get_customer_id(kwargs):
         customer_id = None
     return customer_id
 
-
+def get_guest_user(auth_header):
+	guest_user = frappe.db.get_value("Access Token", {"token": auth_header}, 'email')
+	if guest_user:
+		return guest_user
