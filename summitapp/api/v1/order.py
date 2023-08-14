@@ -86,6 +86,7 @@ def get_payment_details(kwargs):
 
 def place_order(kwargs):
 	try:
+		frappe.set_user("Administrator")
 		email = frappe.session.user
 		common_comment = kwargs.get('common_comment')
 		payment_date = kwargs.get('payment_date')
