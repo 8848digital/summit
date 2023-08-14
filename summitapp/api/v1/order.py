@@ -46,7 +46,6 @@ def get_razorpay_payment_url(kwargs):
 		email = frappe.session.user
 		if email == "Guest":
 			return error_response('Please Login As A Customer')
-
 		kwargs['full_name'], kwargs['email'] = frappe.db.get_value('User', email, ['full_name','email']) or [None, None]
 		# Returns Checkout Url Of Razorpay for payments	
 		payment_details = get_payment_details(kwargs)
@@ -56,28 +55,20 @@ def get_razorpay_payment_url(kwargs):
 		frappe.logger('utils').exception(e)
 		return error_response(e)
 
-# Whitelisted Function
 @frappe.whitelist()
 def get_order_id(kwargs):
 	try:
-		email = None	
-		headers = frappe.request.headers
-		if not headers or 'Authorization' not in headers:
-			return error_response('Please Specify Authorization Token')
-		auth_header = headers.get('Authorization')
-		if "token" in auth_header:
-			email = get_logged_user()
-		else:
-			email = get_guest_user(auth_header)
+		email = frappe.session.user
+		if email == "Guest":
+			return error_response('Please Login As A Customer')
 
-		user = frappe.get_value("User",{'email':email}, 'email')
-		order_id = frappe.db.get_value('Sales Order', {'owner': user}, 'name')
+		customer = frappe.get_value("Customer",{'email':email}, 'name')
+		order_id = frappe.db.get_value('Sales Order', {'customer': customer}, 'name')
 		
 		return success_response(data=order_id)
 	except Exception as e:
 		frappe.logger('utils').exception(e)
 		return error_response(e)
-
 
 def get_payment_details(kwargs):
 	return {
@@ -95,18 +86,10 @@ def get_payment_details(kwargs):
 
 def place_order(kwargs):
 	try:
-		email = None	
-		headers = frappe.request.headers
-		if not headers or 'Authorization' not in headers:
-			return error_response('Please Specify Authorization Token')
-		auth_header = headers.get('Authorization')
-		if "token" in auth_header:
-			email = get_logged_user()
-		else:
-			email = get_guest_user(auth_header)
-		order_id = kwargs.get('order_id')
+		email = frappe.session.user
 		common_comment = kwargs.get('common_comment')
 		payment_date = kwargs.get('payment_date')
+		order_id = kwargs.get('order_id')
 		billing_address_id = kwargs.get('billing_address_id')
 		shipping_address_id = kwargs.get('shipping_address_id')
 		transporter = kwargs.get('transporter')
@@ -119,7 +102,7 @@ def place_order(kwargs):
 			quotation = _get_cart_quotation()
 		else:
 			quotation = frappe.get_doc('Quotation', order_id)
-		quotation.common_comment = common_comment	
+		quotation.common_comment = common_comment
 		quotation.transporter = transporter
 		quotation.door_delivery = door_delivery
 		quotation.godown_delivery = godown_delivery
@@ -127,12 +110,12 @@ def place_order(kwargs):
 		quotation.remarks = remarks
 		quotation.transport_charges = transport_charges
 		order = submit_quotation(quotation, billing_address_id, shipping_address_id,payment_date)
-		frappe.local.login_manager.login_as(email)
 		return order
 	except Exception as e:
-		frappe.local.login_manager.login_as(email)
 		frappe.logger('order').exception(e)
 		return error_response(f"Cart Does Not Exists /{e}")
+
+
 
 def get_summary_details(quot_doc):
 	charges = get_charges_from_table(quot_doc)
@@ -295,35 +278,34 @@ def get_address_detail_json(type, customer, address_doc):
 			'values' : [get_address_details(customer, address_doc)] if address_doc else []
 		}
 
-def submit_quotation(quot_doc, billing_address_id, shipping_address_id,payment_date):
-	frappe.local.login_manager.login_as('Administrator')
-	quot_doc.customer_address = billing_address_id
-	quot_doc.shipping_address_name = shipping_address_id
-	quot_doc.payment_schedule = []
-	quot_doc.save()
-	quot_doc.submit()
-	return create_sales_order(quot_doc,payment_date)
+def submit_quotation(quot_doc, billing_address_id, shipping_address_id, payment_date):
+    quot_doc.customer_address = billing_address_id
+    quot_doc.shipping_address_name = shipping_address_id
+    quot_doc.payment_schedule = []
+    quot_doc.save()
+    quot_doc.submit()
+    return create_sales_order(quot_doc, payment_date)
 
-def create_sales_order(quot_doc,payment_date):
-	so_doc = make_sales_order(quot_doc.name)
-	if payment_date:
-		payment_date = datetime.strptime(payment_date, "%d/%m/%Y").strftime("%Y-%m-%d")
-		so_doc.delivery_date = datetime.strptime(payment_date, "%Y-%m-%d")
-	else:
-		transaction_date = datetime.strptime(so_doc.transaction_date, "%Y-%m-%d")
-		so_doc.delivery_date = (transaction_date + timedelta(days=7)).date()
-	so_doc.payment_schedule = []
-	so_doc.flags.ignore_permissions=True
-	so_doc.save()
-	return confirm_order(so_doc)
+def create_sales_order(quot_doc, payment_date):
+    so_doc = make_sales_order(quot_doc.name)
+    if payment_date:
+        payment_date = datetime.strptime(payment_date, "%d/%m/%Y").strftime("%Y-%m-%d")
+        so_doc.delivery_date = datetime.strptime(payment_date, "%Y-%m-%d")
+    else:
+        transaction_date = datetime.strptime(so_doc.transaction_date, "%Y-%m-%d")
+        so_doc.delivery_date = (transaction_date + timedelta(days=7)).date()
+    so_doc.payment_schedule = []
+    so_doc.flags.ignore_permissions = True
+    so_doc.save()
+    return confirm_order(so_doc)
 	
 
 def confirm_order(so_doc):
-	with contextlib.suppress(Exception):
-		so_doc.flags.ignore_permissions=True
-		so_doc.payment_schedule = []
-		so_doc.save()
-	return so_doc.name
+    with contextlib.suppress(Exception):
+        so_doc.flags.ignore_permissions = True
+        so_doc.payment_schedule = []
+        so_doc.save()
+    return so_doc.name
 
 def get_date_range_filter(filters, date_range):
 	if date_range == 'past_3_months':

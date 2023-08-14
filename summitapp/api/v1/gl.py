@@ -1,25 +1,33 @@
 import frappe
 from frappe import _
+import requests
 from summitapp.utils import error_response, success_response
-from frappe.utils import getdate, now_datetime
+from frappe.utils import getdate, now_datetime, add_months
+from datetime import datetime
+from datetime import timedelta
 from frappe.utils.dateutils import get_period, get_dates_from_timegrain
+from summitapp.api.v1.utils import get_logged_user
 
 @frappe.whitelist()
 def get_dealer_ledger(kwargs):
+	frappe.set_user("Administrator")
 	try:
-		if frappe.session.user == "Guest":
-			return error_response(data="Please Login first")
-		if kwargs.get("from_date") and kwargs.get("to_date"):
-			start = getdate(kwargs.get("from_date"))
-			end = getdate(kwargs.get("to_date"))
-			range = f"{kwargs.get('from_date')} To {kwargs.get('to_date')}"
-		else:
-			start, end = get_dates(kwargs.get('month'))
-			range = kwargs.get('month')
-		party = kwargs.get('party')
-		if not party:
-			party = frappe.db.get_value(
-				"Customer", {"email", frappe.session.user})
+		email = None	
+		headers = frappe.request.headers
+		if not headers or 'Authorization' not in headers:
+			return error_response('Please Specify Authorization Token')
+		if headers:
+			email = get_logged_user()
+			if kwargs.get("from_date") and kwargs.get("to_date"):
+				start = getdate(kwargs.get("from_date"), "%d-%m-%Y")
+				end = getdate(kwargs.get("to_date"), "%d-%m-%Y")
+				range = f"{kwargs.get('from_date')} To {kwargs.get('to_date')}"
+			else:
+				start, end = get_dates(kwargs.get('month'))
+				range = kwargs.get('month')
+			party = kwargs.get('party')
+			if not party:
+				party = frappe.db.get_value("Customer", {"email", email})
 		report = frappe.get_doc(
 			"Report", "General Ledger", ignore_permissions=True)
 		custom_filter = {
@@ -29,10 +37,13 @@ def get_dealer_ledger(kwargs):
 			"party": [kwargs.get('party')]
 		}
 		col, data = report.get_data(filters=custom_filter, as_dict=True)
-
 		# first & last row would be opening & closing balances
 		first, last = data[0], data[-1]
+		due_date_obj = end.replace(day=13)
+		due_date= due_date_obj.strftime('%Y-%m-%d')
 		general_data = {
+			"opening_balance": first.get("balance"),
+			"payment_due_date":due_date,
 			"credit_opening_balance": first.get('credit'),
 			"credit_closing_balance": last.get("credit"),
 			"debit_opening_balance": first.get('debit'),
@@ -80,20 +91,40 @@ def get_si_pdf_link(voucher_type, voucher_no):
 	if voucher_type != "Sales Invoice":
 		return "#"
 	return f"{frappe.utils.get_url()}/api/method/frappe.utils.print_format.download_pdf?doctype=Sales%20Invoice&name={voucher_no}&format=Standard%20SI&no_letterhead=0&letterhead=final%20sales%20%20Invoice&settings=%7B%7D&_lang=en"
-	# return f"{frappe.utils.get_url()}/api/method/summitapp.utils.download_pdf?doctype=Sales%20Invoice&name={voucher_no}&format=Standard%20SI&no_letterhead=0&letterhead=final%20sales%20%20Invoice&settings=%7B%7D&_lang=en"
+	# return f"{frappe.utils.get_url()}/api/method/sportnetwork.utils.download_pdf?doctype=Sales%20Invoice&name={voucher_no}&format=Standard%20SI&no_letterhead=0&letterhead=final%20sales%20%20Invoice&settings=%7B%7D&_lang=en"
 
+@frappe.whitelist()
 def get_ledger_summary(kwargs):
+	frappe.set_user("Administrator")
 	try:
-		if frappe.session.user == "Guest":
-			return error_response(data="Please Login first")
-		party = frappe.db.get_value("Customer", {"email": frappe.session.user})
+		email = None	
+		headers = frappe.request.headers
+		if not headers or 'Authorization' not in headers:
+			return error_response('Please Specify Authorization Token')
+		if headers:
+			email = get_logged_user()
+		party = frappe.db.get_value("Customer", {"email": email})
 		report = frappe.get_doc(
 			"Report", "Customer Credit Balance", ignore_permissions=True)
 		custom_filter = {
 			"company": kwargs.get('company', frappe.db.get_single_value("Global Defaults", "default_company")),
-			"customer": [party]
+			"customer": party
 		}
 		col, data = report.get_data(filters=custom_filter, as_dict=True)
+		general_ledger_report = frappe.get_doc(
+			"Report", "General Ledger", ignore_permissions=True)
+		current_date = getdate()
+		one_month_ago_date = current_date - timedelta(days=current_date.day)
+		thirteenth_date_next_month = add_months(current_date, 1).replace(day=13)
+		
+		ledger_custom_filter = {
+			"company": kwargs.get('company', frappe.db.get_single_value("Global Defaults", "default_company")),
+			"from_date":one_month_ago_date , "to_date":current_date,
+			"group_by": "Group by Voucher (Consolidated)", "include_dimensions": 1, "party_type": "Customer",
+			"party":[party]
+		}
+		ledger_col, ledger_data = general_ledger_report.get_data(filters=ledger_custom_filter, as_dict=True)
+		first = ledger_data[0]
 		result = {}
 		if data:
 			data = data[0]
@@ -108,6 +139,9 @@ def get_ledger_summary(kwargs):
 				"due_payment_amount": data.get("outstanding_amt"),
 				"credit_amount_used": data.get("credit_limit") - data.get("credit_balance"),
 				"months": dates,
+				"payment_due_date":thirteenth_date_next_month,
+				"opening_balance":first.get("balance")
+	
 			}
 		return success_response(data=result)
 	except Exception as e:
@@ -127,8 +161,7 @@ def get_dates(month):
 
 def export_ledger(kwargs):
 	try:
-		if frappe.session.user == "Guest":
-			return error_response(data="Please Login first")
+		frappe.set_user("Administrator")
 		from frappe.utils.xlsxutils import make_xlsx
 
 		if kwargs.get("from_date") and kwargs.get("to_date"):
