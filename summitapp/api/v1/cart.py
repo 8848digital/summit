@@ -37,7 +37,6 @@ def put_products(kwargs):
 		email = None
 		if not frappe.request.headers.get('Authorization'):
 			access_token,email = create_access_token(kwargs)
-			print("access, toke",access_token,email)
 		items = kwargs.get('item_list')
 		if isinstance(items,str):
 			items = json.loads(items)
@@ -76,9 +75,7 @@ def put_products(kwargs):
 			fields["cust_name"] = cust_name
 		if purity:=kwargs.get("purity"):
 			fields["purity"] = purity
-		if currency:=kwargs.get("currency"):
-			fields["currency"] = currency	
-		added_to_cart = add_item_to_cart(item_list, access_token, fields)
+		added_to_cart = add_item_to_cart(item_list, access_token, kwargs.get("currency"),fields)
 		response_data = {
 			"access_token": access_token,
 			"email":email,
@@ -283,7 +280,7 @@ def calculate_quot_taxes(quot_doc):
 	return {'name': quot_doc.get("name")}
 
 
-def create_cart(accees_token, party_name = None):
+def create_cart(currency,accees_token, party_name = None):
 	or_filter = {
 		"session_id": accees_token
 	}
@@ -291,13 +288,13 @@ def create_cart(accees_token, party_name = None):
 		or_filter["party_name"] = party_name
 
 	if quot:=frappe.db.get_list("Quotation",filters = {'status': 'Draft'}, or_filters = or_filter, fields=['name','currency']):
-		print("quote",quot)
 		quot_doc = frappe.get_doc('Quotation', quot[0].get('name'))
 	else:
 		quot_doc = frappe.new_doc('Quotation')
 		quot_doc.order_type = "Shopping Cart"
 		quot_doc.party_name = party_name
 		quot_doc.session_id = accees_token
+		quot_doc.currency = currency
 		if check_guest_user(frappe.session.user):
 			quot_doc.gst_category = "Unregistered"
 		company_addr = get_company_address(quot_doc.company)
@@ -305,10 +302,13 @@ def create_cart(accees_token, party_name = None):
 		quot_doc.company_gstin = company_addr.get("gstin")
 	return quot_doc
 
-def add_item_to_cart(item_list, access_token, fields={}):
+def add_item_to_cart(item_list, access_token, currency,fields={}):
     customer_id = frappe.db.get_value('Customer', {'email': frappe.session.user})
-    quotation = create_cart(access_token, customer_id)
+    quotation = create_cart(currency, access_token, customer_id)
     price_list = get_price_list(customer_id)
+    # Check if currency is already set in the quotation
+    if quotation.currency is not None and currency != quotation.currency:
+        return error_response('Currency cannot be changed for the same cart.')
     quotation.update(fields)
     quotation.selling_price_list = price_list
     
@@ -349,8 +349,6 @@ def add_item_to_cart(item_list, access_token, fields={}):
 
     item_codes = ", ".join([row.item_code for row in quotation.items])
     return f'Item {item_codes} Added To Cart'
-
-
 
 def delete_item_from_cart(item_list, quot_doc):
     item_deleted = False
