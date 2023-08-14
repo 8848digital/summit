@@ -169,10 +169,9 @@ def get_item_price(currency, item_name, customer_id=None, price_list=None, valua
 def convert_currency(amount, currency):
     if currency and currency != 'INR':
         exchange_rate = get_exchange_rate(currency)
-        if exchange_rate:
+        if exchange_rate is not None:
             amount = round(amount * exchange_rate, 2)
     return amount
-
 
 def get_exchange_rate(currency):
     filters = {
@@ -185,6 +184,7 @@ def get_exchange_rate(currency):
         return exchange_rate
     else:
         return None
+
 
 
 def get_stock_info(item_code, key, with_future_stock=True):

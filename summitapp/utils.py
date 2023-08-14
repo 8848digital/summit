@@ -113,7 +113,7 @@ def send_mail(template_name, recipients, context):
 
 def create_temp_user(kwargs):
     try:
-        # frappe.local.login_manager.login_as("Administrator")
+        frappe.local.login_manager.login_as("Administrator")
         username = random_string(8)
         usr = frappe.get_doc({
             "doctype": "User",
@@ -121,9 +121,8 @@ def create_temp_user(kwargs):
             "first_name": "TGuest",
             "send_welcome_email": 0,
             "language": kwargs.get("language_code"),
-	    	"user_type":"System User",
-		    "add_roles":"Customer"
         }).insert()
+        usr.add_roles("Customer") 
         # frappe.local.login_manager.login_as(usr.email)
         return usr.email
     except Exception as e:
@@ -131,9 +130,9 @@ def create_temp_user(kwargs):
         return error_response(e)
 
 
+
 def create_access_token(kwargs):
     try:
-        # frappe.local.login_manager.login_as("Administrator")
         token = random_string(20)
         email = create_temp_user(kwargs)
         access = frappe.get_doc({
@@ -141,7 +140,6 @@ def create_access_token(kwargs):
             "token": token,
             "email": email
         }).insert()
-        # frappe.local.login_manager.login_as(access.email)
         return access.token, access.email
     except Exception as e:
         frappe.logger('cart').exception(e)

@@ -37,6 +37,7 @@ def put_products(kwargs):
 		email = None
 		if not frappe.request.headers.get('Authorization'):
 			access_token,email = create_access_token(kwargs)
+			print("access, toke",access_token,email)
 		items = kwargs.get('item_list')
 		if isinstance(items,str):
 			items = json.loads(items)
@@ -289,7 +290,8 @@ def create_cart(accees_token, party_name = None):
 	if party_name:
 		or_filter["party_name"] = party_name
 
-	if quot:=frappe.db.get_list("Quotation",filters = {'status': 'Draft'}, or_filters = or_filter, fields=['name']):
+	if quot:=frappe.db.get_list("Quotation",filters = {'status': 'Draft'}, or_filters = or_filter, fields=['name','currency']):
+		print("quote",quot)
 		quot_doc = frappe.get_doc('Quotation', quot[0].get('name'))
 	else:
 		quot_doc = frappe.new_doc('Quotation')
@@ -303,24 +305,28 @@ def create_cart(accees_token, party_name = None):
 		quot_doc.company_gstin = company_addr.get("gstin")
 	return quot_doc
 
-def add_item_to_cart(item_list, accees_token,fields={}):
+def add_item_to_cart(item_list, access_token, fields={}):
     customer_id = frappe.db.get_value('Customer', {'email': frappe.session.user})
-    quotation = create_cart(accees_token, customer_id)
+    quotation = create_cart(access_token, customer_id)
     price_list = get_price_list(customer_id)
     quotation.update(fields)
     quotation.selling_price_list = price_list
+    
     for item in item_list:
         if isinstance(item, dict):
             item_code = item.get("item_code")
             quantity = item.get("quantity")
+            
             if item_code and quantity:
-                quotation_items = quotation.get("items", {"item_code": item_code})
+                quotation_items = [qi for qi in quotation.items if qi.item_code == item_code]
+                
                 if not quotation_items:
                     item_data = {
                         "doctype": "Quotation Item",
                         "item_code": item_code,
                         "qty": quantity
                     }
+                    
                     if "size" in item:
                         item_data["size"] = item["size"]
                     if "wastage" in item:
@@ -331,15 +337,20 @@ def add_item_to_cart(item_list, accees_token,fields={}):
                         item_data["colour"] = item["colour"]
                     if "purity" in item:
                         item_data["purity"] = item["purity"]
+                    
                     quotation.append("items", item_data)
                 else:
                     quotation_items[0].qty = quantity
-
+    
     quotation.flags.ignore_mandatory = True
     quotation.flags.ignore_permissions = True
     quotation.payment_schedule = []
     quotation.save()
-    return f'Item {", ".join([row["item_code"] for row in item_list])} Added To Cart'
+
+    item_codes = ", ".join([row.item_code for row in quotation.items])
+    return f'Item {item_codes} Added To Cart'
+
+
 
 def delete_item_from_cart(item_list, quot_doc):
     item_deleted = False
