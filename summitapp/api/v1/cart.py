@@ -76,12 +76,15 @@ def put_products(kwargs):
 		if purity:=kwargs.get("purity"):
 			fields["purity"] = purity
 		added_to_cart = add_item_to_cart(item_list, access_token, kwargs.get("currency"),fields)
-		response_data = {
-			"access_token": access_token,
-			"email":email,
-			"data": added_to_cart,  
-		}
-		return success_response(data = response_data)
+		if added_to_cart == "Currency cannot be changed for the same cart.":
+			return error_response(added_to_cart)
+		elif added_to_cart != "Currency cannot be changed for the same cart.":
+			response_data = {
+				"access_token": access_token,
+				"email":email,
+				"data": added_to_cart,  
+			}
+			return success_response(data = response_data)
 	except Exception as e:
 		frappe.logger('cart').exception(e)
 		return error_response(e)
@@ -308,7 +311,7 @@ def add_item_to_cart(item_list, access_token, currency,fields={}):
     price_list = get_price_list(customer_id)
     # Check if currency is already set in the quotation
     if quotation.currency is not None and currency != quotation.currency:
-        return error_response('Currency cannot be changed for the same cart.')
+        return 'Currency cannot be changed for the same cart.'
     quotation.update(fields)
     quotation.selling_price_list = price_list
     
