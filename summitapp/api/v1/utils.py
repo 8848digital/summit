@@ -43,8 +43,8 @@ def get_filter_listing(kwargs):
         filters['show_on_website'] = 1
         filters['has_variants'] = 0
     else:
-        filters['show_on_website'] = 1
-        filters['has_variants'] = 0  
+       filters['variant_of'] = ['is', "not set"]
+       filters['has_variants'] = 0  
         
     for key, val in kwargs.items():
         if val:
