@@ -30,23 +30,29 @@ def get_countries(kwargs):
 def check_brand_exist(filters):
 	return any('brand' in i for i in filters)
 
-
 def get_filter_listing(kwargs):
     filters = {
         "disabled": 0
     }
     display_both_item_and_variant = int(frappe.db.get_value("Web Settings", "Web Settings", "display_both_item_and_variant"))
+    
     if display_both_item_and_variant == 1:
         filters['has_variants'] = 0
         filters['show_on_website'] = 1
+    elif kwargs.get("category"):
+        filters['show_on_website'] = 1
+        filters['has_variants'] = 0
     else:
         filters['variant_of'] = ['is', "not set"]
-
+        filters['show_on_website'] = 1
+        filters['has_variants'] = 0  
+        
     for key, val in kwargs.items():
         if val:
             filters.update({key: val})
-    
+
     return filters
+
 
 def get_filter_list(kwargs):
 	filters = {
@@ -87,6 +93,11 @@ def get_item_field_values(currency,item, customer_id, url_type,field_names):
         'url': lambda: {'url': get_product_url(item, url_type)},
 		'category_slug': lambda: {'category_slug': get_category_slug(item)},
 		'variant': lambda: {'variant':get_variant_details(item.get('variant_of'))},
+		'variant_of': lambda: {'variant_of':item.get('variant_of')},
+		'equivalent': lambda: {'equivalent':True if item.get('equivalent') == 1 else False},
+		'alternate': lambda: {'alternate':True if item.get('alternate') == 1 else False},
+		'suggested': lambda: {'suggested':True if item.get('suggested') == 1 else False},
+		'mandatory': lambda: {'mandatory':True if item.get('mandatory') == 1 else False},
         'brand_video_url': lambda: {'brand_video_url': frappe.get_value('Brand', item.get('brand'), ['brand_video_link']) or None},
 		'size_chart': lambda: {'size_chart': frappe.get_value('Size Chart', item.get('size_chart'), 'chart')},
 		'slide_img': lambda: {'slide_img': get_default_slide_images(item, False,"size")},
