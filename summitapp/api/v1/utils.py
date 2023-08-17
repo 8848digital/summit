@@ -43,7 +43,6 @@ def get_filter_listing(kwargs):
         filters['show_on_website'] = 1
         filters['has_variants'] = 0
     else:
-        filters['variant_of'] = ['is', "not set"]
         filters['show_on_website'] = 1
         filters['has_variants'] = 0  
         
