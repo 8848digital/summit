@@ -1,13 +1,13 @@
 import frappe
 from summitapp.utils import check_user_exists,success_response,error_response, resync_cart
-from summitapp.api.v1.access_token import get_access_token,auth
+from summitapp.api.v1.access_token import get_access_token,get_token
 
 def signin(kwargs):
 	try:
-		if kwargs.get('usr') == frappe.session.user: return success_response(data='Already Logged In')
+		if (kwargs.get('usr', kwargs.get("email"))) == frappe.session.user: return success_response(data='Already Logged In')
 		if kwargs.get('via_google'):
 			return login_via_google(kwargs)
-		if not check_user_exists(kwargs.get('usr')):
+		if not check_user_exists(kwargs.get('usr') or kwargs.get('email')):
 			return error_response('No account with this Email id')
 		if kwargs.get('with_otp'):
 			# Validate OTP
@@ -75,13 +75,15 @@ def login_via_otp(email):
 	return login_without_password(email)
 
 def login_without_password(email):
-	frappe.local.login_manager.login_as(email)
+	access_token = get_token(email)
+	print("TOKEN",access_token)
 	roles = frappe.get_roles(frappe.session.user)
 	is_superadmin = "Administrator" in roles
 	is_dealer = "Dealer" in roles
 	return success_response(data = {
 									"is_superadmin": is_superadmin,
-									"is_dealer": is_dealer
+									"is_dealer": is_dealer,
+									"access_token":access_token
 								})
 
 def get_redirecting_urls(kwargs):

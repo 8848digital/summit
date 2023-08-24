@@ -1,12 +1,15 @@
 import frappe
-from summitapp.utils import success_response, error_response, send_mail
+from summitapp.utils import success_response, error_response, send_mail,check_user_exists
 import json
 import random
 
 def send_otp(kwargs):
     try:
-        username = kwargs.get('email')
-        return generate_otp(username)
+        username = kwargs.get('usr')
+        if not check_user_exists(username):
+            return error_response('No account with this Email id')
+        else:
+            return generate_otp(username)
     except Exception as e:
         return error_response(e)
 
