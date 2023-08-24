@@ -30,6 +30,24 @@ def get_countries(kwargs):
 def check_brand_exist(filters):
 	return any('brand' in i for i in filters)
 
+# def get_filter_listing(kwargs):
+#     filters = {
+#         "disabled": 0
+#     }
+#     display_both_item_and_variant = int(frappe.db.get_value("Web Settings", "Web Settings", "display_both_item_and_variant"))
+    
+#     if display_both_item_and_variant == 1:
+#         filters['has_variants'] = 0
+#         filters['show_on_website'] = 1
+#     else:
+#        filters['variant_of'] = ['is', "not set"]
+       
+#     for key, val in kwargs.items():
+#         if val:
+#             filters.update({key: val})
+
+#     return filters
+
 def get_filter_listing(kwargs):
     filters = {
         "disabled": 0
@@ -51,7 +69,6 @@ def get_filter_listing(kwargs):
             filters.update({key: val})
 
     return filters
-
 
 def get_filter_list(kwargs):
 	filters = {
@@ -138,11 +155,7 @@ def get_product_url(item_detail, url_type = "product"):
 		return "/"
 	item_cat = item_detail.get('category')
 	item_cat_slug = frappe.db.get_value('Category',item_cat,'slug')
-	display_both_item_and_variant = int(frappe.db.get_value("Web Settings","Web Settings","display_both_item_and_variant"))
-	if product_template:=item_detail.get("variant_of") and not display_both_item_and_variant:
-		product_slug = frappe.db.get_value('Item', product_template, 'slug')
-	else:
-		product_slug = item_detail.get("slug")
+	product_slug = item_detail.get("slug")
 	from summitapp.api.v1.mega_menu import get_item_url
 	return get_item_url(url_type, item_cat_slug, product_slug)
 
