@@ -81,3 +81,13 @@ def auth(kwargs):
     login_manager.authenticate(user=kwargs.get('usr'),pwd=kwargs.get('pwd'))
     login_manager.post_login()    
     return get_access_token(kwargs)
+
+def get_token(email):
+	doc = frappe.get_doc("User", {'email':email})
+	api_key = doc.api_key
+	api_secret = doc.get_password('api_secret')
+	if api_key and api_secret:
+		api_token = "token "+api_key+":"+api_secret
+		access_api_token = api_token
+			
+	return access_api_token 

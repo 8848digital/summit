@@ -33,7 +33,8 @@ def get_summary(kwargs):
 	try:
 		id = kwargs.get('id')
 		quot_doc = frappe.get_doc('Quotation', id)
-		data = {'name':'Order Summary', 'id': id, 'values': get_summary_details(quot_doc)}
+		symbol = get_currency_symbol(quot_doc.currency)
+		data = {'name':'Order Summary', 'id': id, "currency_symbol":symbol,'values': get_summary_details(quot_doc)}
 		return success_response(data = data)
 	except Exception as e:
 		frappe.logger('order').exception(e)
