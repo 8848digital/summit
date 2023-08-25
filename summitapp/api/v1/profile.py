@@ -25,6 +25,7 @@ def get_customer_profile(cust_doc):
 	try:
 		cust_bill_address = None
 		cust_ship_address = None
+		coupon_codes = None
 		if bill_add:=get_billing_address_doc(cust_doc, 'Billing'):
 			cust_bill_address = get_address_details(cust_doc, bill_add)
 		if ship_add:=get_billing_address_doc(cust_doc, 'Shipping', "is_shipping_address"):
@@ -32,6 +33,7 @@ def get_customer_profile(cust_doc):
 		allowed_coupons = []
 		if cust_doc.get("assigned_coupon_code"):
 			allowed_coupons = frappe.get_list("Available Coupons",{"parent":cust_doc.name},pluck='coupon_name', ignore_permissions=1)
+			coupon_codes = frappe.get_list("Coupon Code", {"coupon_name": ["in", allowed_coupons]}, pluck='coupon_code', ignore_permissions=1)
 		contact = frappe.db.get_value("Contact",{"email_id":cust_doc.email},["salutation","first_name", "middle_name", "last_name"], as_dict=1) or {}
 		customer_name = None
 		if contact:
@@ -56,7 +58,7 @@ def get_customer_profile(cust_doc):
 					"balance": cust_doc.get("balance_amount"),
 					"date": cust_doc.get("date")
 			},
-			"allowed_coupons": allowed_coupons
+			"allowed_coupons": coupon_codes
 		}
 		return success_response(data=cust_details)
 
