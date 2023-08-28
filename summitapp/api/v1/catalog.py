@@ -117,14 +117,21 @@ def delete(kwargs):
     
 
 def create_catalog(catalog_name, catalog_access_level):
-    last_catalog = frappe.get_last_doc('Catalog')
-    last_sequence = last_catalog.sequence
-    catalog_doc = frappe.new_doc(('Catalog'))
+    try:
+        last_catalog = frappe.get_last_doc('Catalog')
+        last_sequence = last_catalog.sequence
+    except frappe.exceptions.DoesNotExistError:
+        # Handle the case where there are no documents of type 'Catalog'
+        last_sequence = 0
+    
+    catalog_doc = frappe.new_doc('Catalog')
     catalog_doc.name1 = catalog_name
     catalog_doc.access_level = catalog_access_level
-    catalog_doc.sequence = last_sequence+1
+    catalog_doc.sequence = last_sequence + 1
     catalog_doc.save(ignore_permissions=True)
-    return (f'catalog {catalog_name} Created')
+    
+    return f'Catalog {catalog_name} Created'
+
 
 def add_item(catalog_name, item):
     cat_doc = frappe.get_doc('Catalog', catalog_name)
