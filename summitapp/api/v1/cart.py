@@ -172,6 +172,8 @@ def get_processed_cart(quot_doc):
         item_doc = frappe.db.get_value("Item", row.item_code, "*")
         computed_fields = {
             'min_order_qty': lambda: {'min_order_qty': item_doc.get("min_order_qty")},
+			'weight_per_unit':lambda:{"weight_per_unit":item_doc.get("weight_per_unit")},
+			'total_weight':lambda:{"total_weight":row.get("total_weight")},
             'brand_img': lambda: {'brand_img': frappe.get_value('Brand', {'name': item_doc.get('brand')}, 'image')},
             'level_three_category_name': lambda: {'level_three_category_name': item_doc.get("level_three_category_name")},
             'tax': lambda: {'tax': flt(get_item_wise_tax(quot_doc.taxes).get(item_doc.name, {}).get('tax_amount', 0), 2)},
