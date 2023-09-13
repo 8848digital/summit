@@ -35,14 +35,17 @@ def resync_cart(session):
     try:
         # Check if a Quotation with the given session ID and status "Draft" exists
         name = frappe.db.exists('Quotation', {'session_id': session, "status": "Draft"})
+        
         if name:
             data = {"owner": frappe.session.user}
+            
             customer = frappe.db.get_value("Customer", {"email": frappe.session.user}, "name")
             if customer:
                 data["party_name"] = customer
 
             # Check if an existing Quotation with status "Draft" is owned by the logged-in user
             existing_doc = frappe.db.exists("Quotation", {"owner": frappe.session.user, "status": "Draft"})
+            
             if existing_doc:
                 # Transfer items from the session's Quotation to the user's Quotation
                 items = frappe.db.sql(f"select item_code, qty from `tabQuotation Item` where parent = '{name}'", as_dict=True)
@@ -82,7 +85,8 @@ def resync_cart(session):
             return {"msg": "no quotation Found", "session": session, "f_session": frappe.session}
     except Exception as e:
         frappe.logger('utils').exception(e)
-        return
+        return None  # Return a consistent type in case of an error
+
 
 
 def send_mail(template_name, recipients, context):
