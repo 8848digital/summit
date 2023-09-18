@@ -8,7 +8,6 @@ def get_access_token(kwargs):
     try:
         usr = kwargs.get("usr")
         pwd = kwargs.get("pwd")
-        access_api_token = {}
         try:
             check_password(usr,pwd)
         except Exception as e:
@@ -18,8 +17,12 @@ def get_access_token(kwargs):
         api_secret = doc.get_password('api_secret')
         if api_key and api_secret:
             api_token = "token "+api_key+":"+api_secret
-            access_api_token = {"access_token": api_token}
-        return success_response (data=access_api_token)
+            full_name = doc.full_name
+            result = {
+                "access_token": api_token,
+                "full_name":full_name
+                }
+        return success_response (data=result)
     except Exception as e:
         frappe.logger('token').exception(e)
         return error_response(e)
