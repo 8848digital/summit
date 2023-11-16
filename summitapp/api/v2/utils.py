@@ -465,14 +465,14 @@ def get_logged_user():
     return user
 
 def get_customer_id(kwargs):
-    if kwargs.get('customer_id'):
-        customer_id = kwargs.get('customer_id')
-    elif frappe.request.headers:
+    customer_id = kwargs.get('customer_id')
+    
+    if not customer_id and frappe.request.headers:
         email = get_logged_user()
         customer_id = frappe.db.get_value("Customer", {"email": email}, 'name')
-    else:
-        customer_id = None
+        print("customer id", customer_id)
     return customer_id
+
 
 def get_guest_user(auth_header):
 	guest_user = frappe.db.get_value("Access Token", {"token": auth_header}, 'email')

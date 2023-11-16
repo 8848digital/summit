@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from erpnext.e_commerce.shopping_cart.cart import _get_cart_quotation
 from summitapp.api.v2.cart import calculate_quot_taxes
-from summitapp.api.v2.utils import get_field_names,get_currency,get_currency_symbol,get_logged_user,get_guest_user
+from summitapp.api.v2.utils import get_field_names,get_currency,get_currency_symbol,get_logged_user,get_guest_user,get_customer_id
 
 
 @frappe.whitelist()
@@ -18,11 +18,12 @@ def get_list(kwargs):
 		order_id = kwargs.get('order_id')
 		date_range = kwargs.get('date_range')
 		is_cancelled = kwargs.get('is_cancelled')
+		session_id = kwargs.get('session_id')
 		email = frappe.session.user
-		if email == "Guest":
-			return error_response('Please Login As A Customer')
+		# if email == "Guest":
+		# 	return error_response('Please Login As A Customer')
 		customer = frappe.get_value("Customer",{'email':email})
-		result, order_count = get_listing_details(customer, order_id, date_range, is_cancelled)
+		result, order_count = get_listing_details(customer, order_id, date_range, is_cancelled,session_id)
 		return {'msg': 'success', 'data': result, 'order_count': order_count}
 	except Exception as e:
 		frappe.logger('product').exception(e)
@@ -44,16 +45,11 @@ def get_summary(kwargs):
 @frappe.whitelist()
 def get_razorpay_payment_url(kwargs):
 	try:
-		print("razorypay")
 		email = frappe.session.user
-		if email == "Guest":
-			return error_response('Please Login As A Customer')
 		kwargs['full_name'], kwargs['email'] = frappe.db.get_value('User', email, ['full_name','email']) or [None, None]
 		# Returns Checkout Url Of Razorpay for payments	
 		payment_details = get_payment_details(kwargs)
-		print("payment details",payment_details)
 		doc = frappe.get_doc("Razorpay Settings")
-		print("doc",doc, doc.get_payment_url)
 		return doc.get_payment_url(**payment_details)
 	except Exception as e:
 		frappe.logger('utils').exception(e)
@@ -63,12 +59,12 @@ def get_razorpay_payment_url(kwargs):
 def get_order_id(kwargs):
 	try:
 		email = frappe.session.user
-		if email == "Guest":
-			return error_response('Please Login As A Customer')
-
+		session_id = kwargs.get('session_id')
 		customer = frappe.get_value("Customer",{'email':email}, 'name')
-		order_id = frappe.db.get_value('Sales Order', {'customer': customer}, 'name')
-		
+		if customer:
+			order_id = frappe.db.get_value('Sales Order', {'customer': customer}, 'name')
+		else:
+			order_id = frappe.db.get_value('Sales Order', {'custom_session_id': session_id}, 'name')
 		return success_response(data=order_id)
 	except Exception as e:
 		frappe.logger('utils').exception(e)
@@ -88,26 +84,18 @@ def get_payment_details(kwargs):
 		'redirect_to': f"failed"
 	}
 
-def place_order(kwargs):
+def razorpay_place_order(order_id=None, party_name=None, common_comment=None, payment_date=None,
+                billing_address_id=None, shipping_address_id=None, transporter=None,
+                transport_charges=None, door_delivery=None, godown_delivery=None,
+                location=None, remarks=None):
 	try:
 		print("order place")
 		frappe.set_user("Administrator")
-		party_name = kwargs.get('party_name')
-		common_comment = kwargs.get('common_comment')
-		payment_date = kwargs.get('payment_date')
-		order_id = kwargs.get('order_id')
-		billing_address_id = kwargs.get('billing_address_id')
-		shipping_address_id = kwargs.get('shipping_address_id')
-		transporter = kwargs.get('transporter')
-		transport_charges = kwargs.get("transport_charges")
-		door_delivery = kwargs.get('door_delivery')
-		godown_delivery = kwargs.get('godown_delivery')
-		location = kwargs.get('location')
-		remarks = kwargs.get('remarks')
 		if not order_id:	
 			quotation = _get_cart_quotation()
 		else:
 			quotation = frappe.get_doc('Quotation', order_id)
+			print("quot",quotation)
 		quotation.common_comment = common_comment
 		quotation.transporter = transporter
 		quotation.door_delivery = door_delivery
@@ -123,7 +111,43 @@ def place_order(kwargs):
 		frappe.logger('order').exception(e)
 		return error_response(f"Cart Does Not Exists /{e}")
 
-
+def place_order(kwargs):
+	try:
+		print("order place")
+		frappe.set_user("Administrator")
+		party_name = kwargs.get('party_name')
+		print("party name",party_name)
+		common_comment = kwargs.get('common_comment')
+		payment_date = kwargs.get('payment_date')
+		order_id = kwargs.get('order_id')
+		print("order id",order_id)
+		billing_address_id = kwargs.get('billing_address_id')
+		shipping_address_id = kwargs.get('shipping_address_id')
+		transporter = kwargs.get('transporter')
+		transport_charges = kwargs.get("transport_charges")
+		door_delivery = kwargs.get('door_delivery')
+		godown_delivery = kwargs.get('godown_delivery')
+		location = kwargs.get('location')
+		remarks = kwargs.get('remarks')
+		if not order_id:	
+			quotation = _get_cart_quotation()
+		else:
+			quotation = frappe.get_doc('Quotation', order_id)
+			print("quot",quotation)
+		quotation.common_comment = common_comment
+		quotation.transporter = transporter
+		quotation.door_delivery = door_delivery
+		quotation.godown_delivery = godown_delivery
+		quotation.location = location
+		quotation.remarks = remarks
+		quotation.transport_charges = transport_charges
+		quotation.party_name = party_name
+		order = submit_quotation(quotation, billing_address_id, shipping_address_id,payment_date)
+		print("ORDER",order)
+		return order
+	except Exception as e:
+		frappe.logger('order').exception(e)
+		return error_response(f"Cart Does Not Exists /{e}")
 
 def get_summary_details(quot_doc):
 	charges = get_charges_from_table(quot_doc)
@@ -168,17 +192,24 @@ def get_charges_from_table(doc,table=[]):
 	charges['tax'] = charges.get("total",0) - charges.get("gateway_charge",0) - charges.get("shipping",0) - charges.get("assembly",0)
 	return charges
 
-def get_listing_details(customer, order_id, date_range, is_cancelled):
-    filters = [["Sales Order", "customer", "=", customer]]
+def get_listing_details(customer, order_id, date_range, is_cancelled, session_id):
+    filters = []
+    if customer:
+        filters.append(["Sales Order", "customer", "=", customer])
     if order_id:
         filters.append(["Sales Order", "name", "=", order_id])
     if is_cancelled:
         filters.append(["Sales Order", "status", "=", "Cancelled"])
     if date_range:
         filters = get_date_range_filter(filters, date_range)
+    if session_id:
+        filters.append(["Sales Order", "custom_session_id", "=", session_id])
+
     orders = frappe.get_all("Sales Order", filters=filters, fields="*")
-    charges_fields = get_processed_order(orders,customer)
+    charges_fields = get_processed_order(orders, customer)
     return charges_fields, len(charges_fields)
+
+
 
 def get_processed_order(orders,customer):
     field_names = get_field_names('Order')
@@ -287,6 +318,7 @@ def get_address_detail_json(type, customer, address_doc):
 		}
 
 def submit_quotation(quot_doc, billing_address_id, shipping_address_id, payment_date):
+    print("quote doc", quot_doc)
     quot_doc.customer_address = billing_address_id
     quot_doc.shipping_address_name = shipping_address_id
     quot_doc.payment_schedule = []
@@ -295,6 +327,7 @@ def submit_quotation(quot_doc, billing_address_id, shipping_address_id, payment_
     return create_sales_order(quot_doc, payment_date)
 
 def create_sales_order(quot_doc, payment_date):
+    print("quotation create so", quot_doc)
     so_doc = make_sales_order(quot_doc.name)
     if payment_date:
         payment_date = datetime.strptime(payment_date, "%d/%m/%Y").strftime("%Y-%m-%d")
@@ -302,13 +335,18 @@ def create_sales_order(quot_doc, payment_date):
     else:
         transaction_date = datetime.strptime(so_doc.transaction_date, "%Y-%m-%d")
         so_doc.delivery_date = (transaction_date + timedelta(days=7)).date()
+    
+    so_doc.custom_session_id = quot_doc.session_id
     so_doc.payment_schedule = []
+    
     so_doc.flags.ignore_permissions = True
     so_doc.save()
+    
     return confirm_order(so_doc)
-	
+
 
 def confirm_order(so_doc):
+    print("sodoc", so_doc)
     with contextlib.suppress(Exception):
         so_doc.flags.ignore_permissions = True
         so_doc.payment_schedule = []
