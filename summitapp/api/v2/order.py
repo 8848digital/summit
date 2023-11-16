@@ -2,14 +2,14 @@ import contextlib
 import frappe
 from frappe.utils import flt
 from summitapp.utils import error_response, success_response
-from summitapp.api.v1.product import get_slide_images, get_product_url, get_detailed_item_list
-from summitapp.api.v1.customer_address import get_details as get_address_details
+from summitapp.api.v2.product import get_slide_images, get_product_url, get_detailed_item_list
+from summitapp.api.v2.customer_address import get_details as get_address_details
 from erpnext.selling.doctype.quotation.quotation import make_sales_order
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from erpnext.e_commerce.shopping_cart.cart import _get_cart_quotation
-from summitapp.api.v1.cart import calculate_quot_taxes
-from summitapp.api.v1.utils import get_field_names,get_currency,get_currency_symbol,get_logged_user,get_guest_user
+from summitapp.api.v2.cart import calculate_quot_taxes
+from summitapp.api.v2.utils import get_field_names,get_currency,get_currency_symbol,get_logged_user,get_guest_user
 
 
 @frappe.whitelist()
@@ -44,13 +44,16 @@ def get_summary(kwargs):
 @frappe.whitelist()
 def get_razorpay_payment_url(kwargs):
 	try:
+		print("razorypay")
 		email = frappe.session.user
 		if email == "Guest":
 			return error_response('Please Login As A Customer')
 		kwargs['full_name'], kwargs['email'] = frappe.db.get_value('User', email, ['full_name','email']) or [None, None]
 		# Returns Checkout Url Of Razorpay for payments	
 		payment_details = get_payment_details(kwargs)
+		print("payment details",payment_details)
 		doc = frappe.get_doc("Razorpay Settings")
+		print("doc",doc, doc.get_payment_url)
 		return doc.get_payment_url(**payment_details)
 	except Exception as e:
 		frappe.logger('utils').exception(e)
@@ -87,6 +90,7 @@ def get_payment_details(kwargs):
 
 def place_order(kwargs):
 	try:
+		print("order place")
 		frappe.set_user("Administrator")
 		party_name = kwargs.get('party_name')
 		common_comment = kwargs.get('common_comment')
@@ -113,6 +117,7 @@ def place_order(kwargs):
 		quotation.transport_charges = transport_charges
 		quotation.party_name = party_name
 		order = submit_quotation(quotation, billing_address_id, shipping_address_id,payment_date)
+		print("ORDER",order)
 		return order
 	except Exception as e:
 		frappe.logger('order').exception(e)
@@ -253,7 +258,7 @@ def get_creation_date_time(order):
         return formatted_date_time
 
 def get_item_info(item, item_row):
-	from summitapp.api.v1.cart import get_item_details as item_details
+	from summitapp.api.v2.cart import get_item_details as item_details
 	l1 = item_details(item, item_row)
 	l1.append({'name':'Quantity', 'value': item_row.qty})
 	return l1

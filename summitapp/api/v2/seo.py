@@ -1,7 +1,7 @@
 import frappe
 from frappe import _
 from summitapp.utils import error_response, success_response
-from summitapp.api.v1.mega_menu import get_item_url
+from summitapp.api.v2.mega_menu import get_item_url
 
 def get_meta_tags(kwargs):
     if not kwargs.get("page_name"):

@@ -1,7 +1,7 @@
 import frappe
 import erpnext
 from summitapp.utils import error_response, success_response
-from summitapp.api.v1.customer_address import get_details as get_address_details
+from summitapp.api.v2.customer_address import get_details as get_address_details
 
 
 def get_profile(kwargs):

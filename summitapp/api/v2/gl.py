@@ -6,7 +6,7 @@ from frappe.utils import getdate, now_datetime, add_months
 from datetime import datetime
 from datetime import timedelta
 from frappe.utils.dateutils import get_period, get_dates_from_timegrain
-from summitapp.api.v1.utils import get_logged_user
+from summitapp.api.v2.utils import get_logged_user
 
 @frappe.whitelist()
 def get_dealer_ledger(kwargs):

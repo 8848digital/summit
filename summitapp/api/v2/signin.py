@@ -1,6 +1,6 @@
 import frappe
 from summitapp.utils import check_user_exists,success_response,error_response, resync_cart
-from summitapp.api.v1.access_token import get_access_token,get_token
+from summitapp.api.v2.access_token import get_access_token,get_token
 
 def signin(kwargs):
 	try:
@@ -11,7 +11,7 @@ def signin(kwargs):
 			return error_response('No account with this Email id')
 		if kwargs.get('with_otp'):
 			# Validate OTP
-			from summitapp.api.v1.otp import verify_otp
+			from summitapp.api.v2.otp import verify_otp
 			if verify_otp({"email":kwargs.get('usr'), "otp":kwargs.get('pwd')}).get('msg') != 'success':
 				return error_response('Invalid OTP')
 			else:
@@ -46,7 +46,7 @@ def signin_as_guest(kwargs):
 			Store guest user id, Create User with given params
 			Login User and Transfer Quotation Items From Guest Cart to User Cart 
 		"""
-		from summitapp.api.v1.registration import create_user, create_customer, create_address
+		from summitapp.api.v2.registration import create_user, create_customer, create_address
 		temp_user = frappe.session.user
 		temp_session = frappe.session.sid
 		if not check_user_exists(kwargs.get('email')): 
@@ -77,7 +77,7 @@ def login_via_google(kwargs):
 	if check_user_exists(kwargs.get('usr', kwargs.get("email"))):
 		return login_without_password(kwargs.get('usr', kwargs.get("email")))
 	else:
-		from summitapp.api.v1.registration import customer_signup
+		from summitapp.api.v2.registration import customer_signup
 		return customer_signup(kwargs)
 
 def login_via_otp(email):

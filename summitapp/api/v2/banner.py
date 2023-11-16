@@ -1,6 +1,6 @@
 import frappe
 from summitapp.utils import success_response, error_response
-from summitapp.api.v1.utils import get_field_names,get_logged_user
+from summitapp.api.v2.utils import get_field_names,get_logged_user
 
 def get(kwargs):
     try:

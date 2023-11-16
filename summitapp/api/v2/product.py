@@ -5,8 +5,8 @@ from frappe import _
 from frappe.model.db_query import DatabaseQuery
 from frappe.utils.global_search import search
 from frappe.utils import flt, cint, today, add_days
-from summitapp.api.v1.translation import translate_result
-from summitapp.api.v1.utils import (check_brand_exist, get_filter_list, get_filter_listing,
+from summitapp.api.v2.translation import translate_result
+from summitapp.api.v2.utils import (check_brand_exist, get_filter_list, get_filter_listing,
                                        get_slide_images, get_stock_info, 
 									   get_processed_list, get_item_field_values, 
 									   get_field_names, create_user_tracking,
@@ -16,6 +16,7 @@ from summitapp.api.v1.utils import (check_brand_exist, get_filter_list, get_filt
 @frappe.whitelist()
 def get_list(kwargs):
     try:
+        print("111")
         create_user_tracking(kwargs, "Product Listing")
         internal_call = kwargs.get("internal", 0)
         category_slug = kwargs.get('category')
@@ -349,7 +350,7 @@ def get_product_url(item_detail):
 		product_slug = frappe.db.get_value('Item', product_template, 'slug')
 	else:
 		product_slug = item_detail.get("slug")
-	from summitapp.api.v1.mega_menu import get_item_url
+	from summitapp.api.v2.mega_menu import get_item_url
 	return get_item_url('product', item_cat_slug, product_slug)
 
 

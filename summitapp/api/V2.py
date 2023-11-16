@@ -73,7 +73,9 @@ class V2():
 
     def class_map(self, kwargs):
         entity = kwargs.get('entity')
+        print("entity",entity)
         method = kwargs.get('method')
+        print("method",method)
         if self.methods.get(entity):
             if method in self.methods.get(entity):
                 function = f"{kwargs.get('entity')}.{kwargs.get('method')}({kwargs})"
