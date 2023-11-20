@@ -16,7 +16,6 @@ from summitapp.api.v2.utils import (check_brand_exist, get_filter_list, get_filt
 @frappe.whitelist()
 def get_list(kwargs):
     try:
-        print("111")
         create_user_tracking(kwargs, "Product Listing")
         internal_call = kwargs.get("internal", 0)
         category_slug = kwargs.get('category')
@@ -159,7 +158,7 @@ def get_cyu_categories(kwargs):
 	ignore_permissions = frappe.session.user == "Guest"
 	return frappe.get_list('CYU Categories',
 							   filters={},
-							   fields=['name as product_category', 'image as product_img', 'slug', 'url as category_url', 'description'],
+							   fields=['name as product_category', 'heading','label','image as product_img', 'slug', 'url as category_url', 'description','offer','range_start_from'],
 							   order_by='sequence',
 							   ignore_permissions=ignore_permissions)
 
@@ -538,4 +537,4 @@ def get_default_currency(kwargs):
     return {
           'default_currency': default_currency,
           'company':company_name
-          }
+          }        

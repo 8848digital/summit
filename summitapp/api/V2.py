@@ -41,6 +41,7 @@ import summitapp.api.v2.utils as utils
 import summitapp.api.v2.push_notification as push_notification
 import summitapp.api.v2.access_token as access_token
 import summitapp.api.v2.translation as translation
+import summitapp.api.v2.customer_review as customer_review
 
 class V2():
     def __init__(self):
@@ -65,10 +66,11 @@ class V2():
             "gl": ['get_dealer_ledger', 'get_ledger_summary', "export_ledger"],
             "wishlist": ["add_to_wishlist", "remove_from_wishlist", "get_wishlist_items"],
             "seo": ["get_meta_tags","get_site_map"],
-            "utils": ["validate_pincode", "get_cities", 'get_states', 'get_countries'],
+            "utils": ["validate_pincode", "get_cities", 'get_states', 'get_countries','get_marquee'],
             "push_notification":["get_notification"],
             "access_token":['auth',"get_access_token","login"],
-            "translation":["get_languages",'get_translation_text']
+            "translation":["get_languages",'get_translation_text'],
+            "customer_review":["get_customer_review","create_customer_review"]
         }
 
     def class_map(self, kwargs):

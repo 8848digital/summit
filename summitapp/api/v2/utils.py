@@ -114,6 +114,7 @@ def get_item_field_values(currency,item, customer_id, url_type,field_names):
     	'alternate': lambda: {'alternate': bool(item.get('alternate') == '1')},
     	'mandatory': lambda: {'mandatory': bool(item.get('mandatory') == '1')},
     	'suggested': lambda: {'suggested': bool(item.get('suggested') == '1')},
+		'e_commerce_platforms':lambda: {'e_commerce_platforms':get_ecommerce_platforms(item)},
         'brand_video_url': lambda: {'brand_video_url': frappe.get_value('Brand', item.get('brand'), ['brand_video_link']) or None},
 		'size_chart': lambda: {'size_chart': frappe.get_value('Size Chart', item.get('size_chart'), 'chart')},
 		'slide_img': lambda: {'slide_img': get_default_slide_images(item, False,"size")},
@@ -342,7 +343,7 @@ def get_slideshow_value(item_name):
 def get_features(key_feature):
 	key_features = frappe.get_all(
 		"Key Feature Detail", {"parent": key_feature}, pluck = "key_feature", order_by ="idx")
-	feat_val = frappe.get_all("Key Feature",{"key_feature": ["in",key_features]}, ["key_feature as heading", "description"], order_by = "idx")
+	feat_val = frappe.get_all("Key Feature",{"key_feature": ["in",key_features]}, ["key_feature as heading", "description","image"], order_by = "idx")
 	return {'name': 'Key Features', 'values': feat_val}
 
 
@@ -470,7 +471,6 @@ def get_customer_id(kwargs):
     if not customer_id and frappe.request.headers:
         email = get_logged_user()
         customer_id = frappe.db.get_value("Customer", {"email": email}, 'name')
-        print("customer id", customer_id)
     return customer_id
 
 
@@ -478,3 +478,36 @@ def get_guest_user(auth_header):
 	guest_user = frappe.db.get_value("Access Token", {"token": auth_header}, 'email')
 	if guest_user:
 		return guest_user
+
+def get_ecommerce_platforms(item):
+    try:
+        platforms = frappe.get_all("E Commerce Platforms",
+                                   filters={"parent": item.name},
+                                   fields=["platform", "link", "sequence"],
+                                   order_by="sequence")
+        return platforms  # Adjusted indentation here
+    except Exception as e:
+        frappe.logger("product").exception(e)
+        return error_response(e)
+
+
+def get_marquee(kwargs):
+	try:
+		marquee = frappe.get_doc("Marquee")
+		result = {
+			"heading_1":marquee.heading_1,
+			"heading_2":marquee.heading_2,
+			"heading_3":marquee.heading_3,
+			"heading_4":marquee.heading_4,
+			"heading_5":marquee.heading_5,
+			"heading_6":marquee.heading_6,
+			"heading_7":marquee.heading_7,
+			"heading_8":marquee.heading_8,
+			"heading_9":marquee.heading_9,
+			"heading_10":marquee.heading_10,
+		}
+		return success_response(result)
+	except Exception as e:
+		frappe.logger("product").exception(e)
+		return error_response(e)
+	
