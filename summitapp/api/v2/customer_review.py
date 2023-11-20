@@ -3,6 +3,8 @@ from summitapp.utils import success_response,error_response
 import datetime
 from datetime import datetime
 import json
+from frappe.model.db_query import DatabaseQuery
+
 
 @frappe.whitelist()
 def create_customer_review(kwargs):
@@ -49,9 +51,9 @@ def get_customer_review(kwargs):
     try:
         if not kwargs.get('item_code'): 
             return error_response('Please Specify Item Code')
-        
+        filters = {"item_code": kwargs.get("item_code")}
         cr_doc = frappe.get_list("Customer Reviews",
-                                 filters={"item_code": kwargs.get("item_code")},
+                                 filters=filters,
                                  fields=["name as review_doc", "name1 as name", "email", "comment", "item_code", "item_name", "rating", "date", "verified"])
         
         reviews_with_images = []
@@ -60,7 +62,8 @@ def get_customer_review(kwargs):
             review['images'] = images  # Append images to the review
             reviews_with_images.append(review)
         response_data = reviews_with_images
-        return success_response(response_data)
+        count = get_count("Customer Reviews",filters=filters)
+        return {'msg': 'success', 'data': response_data, 'total_count': count}
     
     except Exception as e:
         frappe.logger("cr").exception(e)
@@ -76,3 +79,11 @@ def get_images(doc):
     except Exception as e:
         frappe.logger("profile").exception(e)
         return error_response(str(e))
+
+
+def get_count(doctype, **args):
+	distinct = "distinct " if args.get("distinct") else ""
+	args["fields"] = [f"count({distinct}`tab{doctype}`.name) as total_count"]
+	res = DatabaseQuery(doctype).execute(**args)
+	data = res[0].get("total_count")
+	return data

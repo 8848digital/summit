@@ -11,6 +11,7 @@
   "category_name",
   "label",
   "image",
+  "heading",
   "slug",
   "menu_image_1",
   "menu_image_3",
@@ -47,8 +48,8 @@
   },
   {
    "fieldname": "image",
-   "fieldtype": "Attach",
-   "label": "image"
+   "fieldtype": "Attach Image",
+   "label": "Image"
   },
   {
    "fieldname": "slug",
@@ -144,12 +145,17 @@
    "fieldtype": "Link",
    "label": "Parent Category",
    "options": "Category"
+  },
+  {
+   "fieldname": "heading",
+   "fieldtype": "Data",
+   "label": "Heading"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2023-05-29 10:37:16.221103",
+ "modified": "2023-11-20 14:44:39.312765",
  "modified_by": "Administrator",
  "module": "SummitApp",
  "name": "Category",

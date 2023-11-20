@@ -66,7 +66,7 @@ class V2():
             "gl": ['get_dealer_ledger', 'get_ledger_summary', "export_ledger"],
             "wishlist": ["add_to_wishlist", "remove_from_wishlist", "get_wishlist_items"],
             "seo": ["get_meta_tags","get_site_map"],
-            "utils": ["validate_pincode", "get_cities", 'get_states', 'get_countries','get_marquee'],
+            "utils": ["validate_pincode", "get_cities", 'get_states', 'get_countries','get_marquee','get_testomonial','get_company_motto'],
             "push_notification":["get_notification"],
             "access_token":['auth',"get_access_token","login"],
             "translation":["get_languages",'get_translation_text'],
