@@ -42,6 +42,8 @@ import summitapp.api.v2.push_notification as push_notification
 import summitapp.api.v2.access_token as access_token
 import summitapp.api.v2.translation as translation
 import summitapp.api.v2.customer_review as customer_review
+import summitapp.api.v2.warranty_claim as warranty_claim
+
 
 class V2():
     def __init__(self):
@@ -56,7 +58,7 @@ class V2():
             "dealer": ['get_dealer'],
             "profile": ['get_profile','customer_inquiry', 'ageing_report', 'get_transporters'],
             "filter": ['get_filters'],
-            "mega_menu": ['get', 'breadcrums'],
+            "mega_menu": ['get', 'breadcrums','get_mega_menu'],
             "order": ['get_list', 'get_summary', 'get_order_id', 'place_order', 'return_replace_item', 'get_razorpay_payment_url', 'get_order_details', 'recently_bought'],
             "product": ['get_list', 'get_details', 'get_cyu_categories', 'get_variants', 'get_recommendation', 'get_top_categories', "get_tagged_products", "check_availability", "get_categories",'get_default_currency'],
             "registration": ['add_subscriber','customer_signup', 'change_password', 'reset_password', 'send_reset_link', 'create_registration'],
@@ -70,7 +72,8 @@ class V2():
             "push_notification":["get_notification"],
             "access_token":['auth',"get_access_token","login"],
             "translation":["get_languages",'get_translation_text'],
-            "customer_review":["get_customer_review","create_customer_review"]
+            "customer_review":["get_customer_review","create_customer_review"],
+            "warranty_claim":["get_warranty_claim","create_warranty_claim"]
         }
 
     def class_map(self, kwargs):

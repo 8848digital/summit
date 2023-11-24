@@ -1,36 +1,36 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": ".product_type.-.####",
- "creation": "2023-05-18 15:15:00.049711",
+ "autoname": "format:{name1}",
+ "creation": "2023-11-21 15:47:02.374169",
+ "default_view": "List",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "product_type",
-  "product_fields"
+  "name1",
+  "product_type_field"
  ],
  "fields": [
   {
-   "fieldname": "product_type",
-   "fieldtype": "Select",
-   "label": "Product Type",
-   "options": "\nList\nDetails\nCart\nOrder\nBrand\nBanner\nCatalog\nWarranty Claim"
+   "fieldname": "name1",
+   "fieldtype": "Data",
+   "label": "Name"
   },
   {
-   "fieldname": "product_fields",
+   "fieldname": "product_type_field",
    "fieldtype": "Table",
-   "label": "Product Fields",
-   "options": "Product Fields"
+   "label": "Product Type Field",
+   "options": "Product Type Field"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-11-23 10:37:00.001345",
+ "modified": "2023-11-21 15:47:02.374169",
  "modified_by": "Administrator",
  "module": "SummitApp",
- "name": "Product Page Field",
- "naming_rule": "Expression (old style)",
+ "name": "Product Type",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

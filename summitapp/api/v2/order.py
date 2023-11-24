@@ -87,7 +87,7 @@ def get_payment_details(kwargs):
 def razorpay_place_order(order_id=None, party_name=None, common_comment=None, payment_date=None,
                 billing_address_id=None, shipping_address_id=None, transporter=None,
                 transport_charges=None, door_delivery=None, godown_delivery=None,
-                location=None, remarks=None):
+                location=None, remarks=None,company_gstin=None):
 	try:
 		print("order place")
 		frappe.set_user("Administrator")
@@ -104,7 +104,7 @@ def razorpay_place_order(order_id=None, party_name=None, common_comment=None, pa
 		quotation.remarks = remarks
 		quotation.transport_charges = transport_charges
 		quotation.party_name = party_name
-		order = submit_quotation(quotation, billing_address_id, shipping_address_id,payment_date)
+		order = submit_quotation(quotation, billing_address_id, shipping_address_id,payment_date,company_gstin)
 		print("ORDER",order)
 		return order
 	except Exception as e:
@@ -142,7 +142,7 @@ def place_order(kwargs):
 		quotation.remarks = remarks
 		quotation.transport_charges = transport_charges
 		quotation.party_name = party_name
-		order = submit_quotation(quotation, billing_address_id, shipping_address_id,payment_date)
+		order = submit_quotation(quotation, billing_address_id, shipping_address_id,payment_date,None)
 		print("ORDER",order)
 		return order
 	except Exception as e:
@@ -317,16 +317,16 @@ def get_address_detail_json(type, customer, address_doc):
 			'values' : [get_address_details(customer, address_doc)] if address_doc else []
 		}
 
-def submit_quotation(quot_doc, billing_address_id, shipping_address_id, payment_date):
+def submit_quotation(quot_doc, billing_address_id, shipping_address_id, payment_date,company_gstin):
     print("quote doc", quot_doc)
     quot_doc.customer_address = billing_address_id
     quot_doc.shipping_address_name = shipping_address_id
     quot_doc.payment_schedule = []
     quot_doc.save()
     quot_doc.submit()
-    return create_sales_order(quot_doc, payment_date)
+    return create_sales_order(quot_doc, payment_date,company_gstin)
 
-def create_sales_order(quot_doc, payment_date):
+def create_sales_order(quot_doc, payment_date,company_gstin):
     print("quotation create so", quot_doc)
     so_doc = make_sales_order(quot_doc.name)
     if payment_date:
@@ -335,7 +335,7 @@ def create_sales_order(quot_doc, payment_date):
     else:
         transaction_date = datetime.strptime(so_doc.transaction_date, "%Y-%m-%d")
         so_doc.delivery_date = (transaction_date + timedelta(days=7)).date()
-    
+    so_doc.company_gstin = company_gstin
     so_doc.custom_session_id = quot_doc.session_id
     so_doc.payment_schedule = []
     

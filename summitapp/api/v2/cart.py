@@ -12,7 +12,7 @@ from summitapp.api.v2.translation import translate_result
 @frappe.whitelist(allow_guest=True)
 def get_list(kwargs):
     try:
-        email = None	
+        email = None
         token = None
         headers = frappe.request.headers
         if not headers or 'Authorization' not in headers:
@@ -28,6 +28,7 @@ def get_list(kwargs):
     except Exception as e:
         frappe.logger('cart').exception(e)
         return error_response(e)
+
 
 
 @frappe.whitelist(allow_guest=True)
@@ -356,7 +357,7 @@ def add_item_to_cart(item_list, access_token, currency, fields={}):
     quotation.flags.ignore_mandatory = True
     quotation.flags.ignore_permissions = True
     quotation.payment_schedule = []
-    quotation.save()
+    quotation.save(ignore_permissions=True)
 
     item_codes = ", ".join([row.item_code for row in quotation.items])
     return f'Item {item_codes} Added To Cart'

@@ -102,3 +102,12 @@ def prepare_url(prefix, category, parent=None):
 		return f"{parent}/{category}"
 	else:
 		return f"/{prefix}/{category}"
+	
+@frappe.whitelist(allow_guest=True)
+def get_mega_menu(kwargs):
+	try:
+		category = frappe.get_list("Category",fields=['name', 'label', 'sequence as seq', 'slug', 'image','url'])
+		return success_response(category)
+	except Exception as e:
+		frappe.logger('mega_menu').exception(e)
+		return error_response(e)	
