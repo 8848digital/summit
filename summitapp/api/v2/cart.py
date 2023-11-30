@@ -409,7 +409,7 @@ def get_quotation_history(kwargs):
 	if not customer:
 		return error_response('Please login as a customer')
 	send_quotation = kwargs.get("only_requested",1)
-	filters = {"party_name": customer, "send_quotation":send_quotation,"docstatus":1}
+	filters = {"party_name": customer, "docstatus":1}
 	quotations = frappe.get_list("Quotation",filters=filters,fields=["name","modified","total_qty", "rounded_total","grand_total"])
 	if quotations:
 		quotations = [

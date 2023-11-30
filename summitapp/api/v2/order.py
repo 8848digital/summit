@@ -10,7 +10,7 @@ from dateutil.relativedelta import relativedelta
 from erpnext.e_commerce.shopping_cart.cart import _get_cart_quotation
 from summitapp.api.v2.cart import calculate_quot_taxes
 from summitapp.api.v2.utils import get_field_names,get_currency,get_currency_symbol,get_logged_user,get_guest_user,get_customer_id
-
+import json
 
 @frappe.whitelist()
 def get_list(kwargs):
@@ -89,13 +89,12 @@ def razorpay_place_order(order_id=None, party_name=None, common_comment=None, pa
                 transport_charges=None, door_delivery=None, godown_delivery=None,
                 location=None, remarks=None,company_gstin=None):
 	try:
-		print("order place")
 		frappe.set_user("Administrator")
 		if not order_id:	
 			quotation = _get_cart_quotation()
 		else:
 			quotation = frappe.get_doc('Quotation', order_id)
-			print("quot",quotation)
+			
 		quotation.common_comment = common_comment
 		quotation.transporter = transporter
 		quotation.door_delivery = door_delivery
@@ -105,7 +104,6 @@ def razorpay_place_order(order_id=None, party_name=None, common_comment=None, pa
 		quotation.transport_charges = transport_charges
 		quotation.party_name = party_name
 		order = submit_quotation(quotation, billing_address_id, shipping_address_id,payment_date,company_gstin)
-		print("ORDER",order)
 		return order
 	except Exception as e:
 		frappe.logger('order').exception(e)
@@ -113,14 +111,11 @@ def razorpay_place_order(order_id=None, party_name=None, common_comment=None, pa
 
 def place_order(kwargs):
 	try:
-		print("order place")
 		frappe.set_user("Administrator")
 		party_name = kwargs.get('party_name')
-		print("party name",party_name)
 		common_comment = kwargs.get('common_comment')
 		payment_date = kwargs.get('payment_date')
 		order_id = kwargs.get('order_id')
-		print("order id",order_id)
 		billing_address_id = kwargs.get('billing_address_id')
 		shipping_address_id = kwargs.get('shipping_address_id')
 		transporter = kwargs.get('transporter')
@@ -133,7 +128,6 @@ def place_order(kwargs):
 			quotation = _get_cart_quotation()
 		else:
 			quotation = frappe.get_doc('Quotation', order_id)
-			print("quot",quotation)
 		quotation.common_comment = common_comment
 		quotation.transporter = transporter
 		quotation.door_delivery = door_delivery
@@ -143,7 +137,6 @@ def place_order(kwargs):
 		quotation.transport_charges = transport_charges
 		quotation.party_name = party_name
 		order = submit_quotation(quotation, billing_address_id, shipping_address_id,payment_date,None)
-		print("ORDER",order)
 		return order
 	except Exception as e:
 		frappe.logger('order').exception(e)
@@ -371,22 +364,56 @@ def get_date_range_filter(filters, date_range):
 	return filters
 
 
+# def return_replace_item(kwargs):
+# 	try:
+# 		if not kwargs.get('order_id'): return error_response('Please Sepecify Order')
+# 		if not kwargs.get('product_id'): return error_response('Please Specify Product')
+# 		rr_doc = frappe.new_doc('Return Replacement Request')
+# 		rr_doc.type = kwargs.get('return_replacement')
+# 		rr_doc.reason = kwargs.get('description')
+# 		rr_doc.order_id = kwargs.get('order_id')
+# 		rr_doc.product_id = kwargs.get('product_id')
+# 		images = kwargs.get("images",{})
+# 		for file in images.values():
+# 			rr_doc.append("return_replacement_image",{"image":file})
+# 		rr_doc.save(ignore_permissions=True) # Ignoring Permissions to Save the Document
+# 		return success_response(data={'docname':rr_doc.name, 'doctype': rr_doc.doctype})
+# 	except Exception as e:
+# 		return error_response(e)
+
+@frappe.whitelist()
 def return_replace_item(kwargs):
-	try:
-		if not kwargs.get('order_id'): return error_response('Please Sepecify Order')
-		if not kwargs.get('product_id'): return error_response('Please Specify Product')
-		rr_doc = frappe.new_doc('Return Replacement Request')
-		rr_doc.type = kwargs.get('return_replacement')
-		rr_doc.reason = kwargs.get('description')
-		rr_doc.order_id = kwargs.get('order_id')
-		rr_doc.product_id = kwargs.get('product_id')
-		images = kwargs.get("images",{})
-		for file in images.values():
-			rr_doc.append("return_replacement_image",{"image":file})
-		rr_doc.save(ignore_permissions=True) # Ignoring Permissions to Save the Document
-		return success_response(data={'docname':rr_doc.name, 'doctype': rr_doc.doctype})
-	except Exception as e:
-		return error_response(e)
+    try:
+        if frappe.request.data:
+            request_data = json.loads(frappe.request.data)
+            if not request_data.get('order_id'): 
+                return error_response('Please Specify Order ID')
+            if not request_data.get('product_id'): 
+                return error_response('Please Specify Product ID')
+            
+            rr_doc = frappe.new_doc('Return Replacement Request')
+            rr_doc.type = kwargs.get('type')
+            rr_doc.reason = kwargs.get('reason')
+            rr_doc.order_id = request_data.get('order_id')  # Fixed: accessing order_id from request_data
+            rr_doc.product_id = request_data.get('product_id')  # Fixed: accessing product_id from request_data
+            
+            images = request_data.get("images")
+            if images:  # Check if images exist before iterating
+                for i in images:
+                    image = i.get('image')
+                    rr_doc.append(
+                        "return_replacement_image",
+                        {
+                            "doctype": "Return Replacement Image",
+                            "image": image
+                        },
+                    )
+            
+            rr_doc.save(ignore_permissions=True)
+            return success_response(data={'docname': rr_doc.name, 'doctype': rr_doc.doctype})
+    except Exception as e:
+        frappe.logger("rr").exception(e)
+        return error_response(str(e))
 
 def get_order_details(kwargs):
 	if not kwargs.get('order_id'):

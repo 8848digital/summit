@@ -1,36 +1,38 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": ".product_type.-.####",
- "creation": "2023-05-18 15:15:00.049711",
+ "autoname": "field:customer",
+ "creation": "2023-11-30 16:51:38.210709",
+ "default_view": "List",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "product_type",
-  "product_fields"
+  "customer",
+  "details"
  ],
  "fields": [
   {
-   "fieldname": "product_type",
-   "fieldtype": "Select",
-   "label": "Product Type",
-   "options": "\nList\nDetails\nCart\nOrder\nBrand\nBanner\nCatalog\nWarranty Claim\nSerial No"
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer",
+   "unique": 1
   },
   {
-   "fieldname": "product_fields",
+   "fieldname": "details",
    "fieldtype": "Table",
-   "label": "Product Fields",
-   "options": "Product Fields"
+   "label": "Details",
+   "options": "Customer Warranty Claim Details"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-11-30 14:17:03.894471",
+ "modified": "2023-11-30 16:52:51.015920",
  "modified_by": "Administrator",
  "module": "SummitApp",
- "name": "Product Page Field",
- "naming_rule": "Expression (old style)",
+ "name": "Customer Warranty Claim",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

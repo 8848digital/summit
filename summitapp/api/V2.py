@@ -73,7 +73,8 @@ class V2():
             "access_token":['auth',"get_access_token","login"],
             "translation":["get_languages",'get_translation_text'],
             "customer_review":["get_customer_review","create_customer_review"],
-            "warranty_claim":["get_warranty_claim","create_warranty_claim"]
+            "warranty_claim":["get_warranty_claim","create_warranty_claim",
+                              "get_sr_no_list","get_sr_no_details","get_cust_wc_details"]
         }
 
     def class_map(self, kwargs):

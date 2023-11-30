@@ -9,6 +9,7 @@
  "field_order": [
   "title",
   "img",
+  "mobile_banner",
   "button_1_title",
   "button_2_title",
   "sequence",
@@ -106,11 +107,16 @@
    "fieldtype": "Link",
    "label": "Category",
    "options": "Category"
+  },
+  {
+   "fieldname": "mobile_banner",
+   "fieldtype": "Attach Image",
+   "label": "Mobile Banner"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-11-20 15:01:53.897710",
+ "modified": "2023-11-30 15:02:05.576551",
  "modified_by": "Administrator",
  "module": "SummitApp",
  "name": "Home Banner",
