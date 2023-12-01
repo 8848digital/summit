@@ -384,6 +384,8 @@ def get_date_range_filter(filters, date_range):
 @frappe.whitelist()
 def return_replace_item(kwargs):
     try:
+        email = get_logged_user()  
+        customer = frappe.get_list("Customer", filters={"email": email})
         if frappe.request.data:
             request_data = json.loads(frappe.request.data)
             if not request_data.get('order_id'): 
@@ -394,21 +396,21 @@ def return_replace_item(kwargs):
             rr_doc = frappe.new_doc('Return Replacement Request')
             rr_doc.type = kwargs.get('type')
             rr_doc.reason = kwargs.get('reason')
-            rr_doc.order_id = request_data.get('order_id')  # Fixed: accessing order_id from request_data
-            rr_doc.product_id = request_data.get('product_id')  # Fixed: accessing product_id from request_data
-            
-            images = request_data.get("images")
-            if images:  # Check if images exist before iterating
-                for i in images:
-                    image = i.get('image')
-                    rr_doc.append(
-                        "return_replacement_image",
-                        {
-                            "doctype": "Return Replacement Image",
-                            "image": image
-                        },
-                    )
-            
+            rr_doc.order_id = request_data.get('order_id')
+            rr_doc.product_id = request_data.get('product_id')
+            rr_doc.customer = customer[0].name if customer else None  # Accessing the first customer if exists
+            rr_doc.date = datetime.now()
+            rr_doc.customer_email = email
+            images = request_data.get("images", [])
+            for i in images:
+                image = i.get('image')
+                rr_doc.append(
+                    "return_replacement_image",
+                    {
+                        "doctype": "Return Replacement Image",
+                        "image": image
+                    },
+                )
             rr_doc.save(ignore_permissions=True)
             return success_response(data={'docname': rr_doc.name, 'doctype': rr_doc.doctype})
     except Exception as e:
