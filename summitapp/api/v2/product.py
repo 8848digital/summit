@@ -38,7 +38,9 @@ def get_list(kwargs):
             order_by = None
             filter_args = {"access_level": access_level}
             if category_slug:
+                print("1 category slug",category_slug)
                 child_categories = get_child_categories(category_slug)
+                print("5 child categ",child_categories)
                 filter_args["category"] = child_categories
             if kwargs.get('brand'):
                 filter_args["brand"] = frappe.get_value('Brand', {'slug': kwargs.get('brand')})
