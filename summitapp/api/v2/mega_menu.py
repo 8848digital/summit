@@ -11,7 +11,7 @@ def get(kwargs):
 			filters.update({"name": ["in", categories]})
 		category_list = get_item_list('Category', filters)
 		category_list = [{'values': get_sub_cat(cat, allowed_categories=categories), **cat} for cat in category_list]
-		return success_response(data=category_list)
+		return category_list
 	except Exception as e:
 		frappe.logger('mega menu').exception(e)
 		return error_response(e)
@@ -149,7 +149,7 @@ def get_navbar_data(kwargs):
 
             navbar_data.append(navbar_item)
         # translated_data = translate_keys(navbar_data, user_language)
-        return success_response(data=navbar_data)
+        return navbar_data
     except Exception as e:
         frappe.logger("Navbar").exception(e)
         return error_response(e)
