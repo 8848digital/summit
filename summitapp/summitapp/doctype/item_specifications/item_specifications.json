@@ -1,29 +1,29 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:{name_value}-{item}",
- "creation": "2023-12-22 16:52:43.255086",
+ "autoname": "format:{name1}-{item}",
+ "creation": "2023-12-22 18:57:33.619976",
  "default_view": "List",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "name1",
   "item",
-  "name_value",
-  "item_value"
+  "item_specifications_value"
  ],
  "fields": [
   {
-   "fieldname": "item_value",
-   "fieldtype": "Table",
-   "label": "Item Value ",
-   "options": "Item Specifications Value Details"
+   "fieldname": "name1",
+   "fieldtype": "Data",
+   "label": "Name",
+   "unique": 1
   },
   {
-   "fieldname": "name_value",
-   "fieldtype": "Data",
-   "label": "Name Value",
-   "unique": 1
+   "fieldname": "item_specifications_value",
+   "fieldtype": "Table",
+   "label": "Item Specifications Value",
+   "options": "Item Specifications Details"
   },
   {
    "fieldname": "item",
@@ -34,10 +34,10 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-12-22 17:56:26.166854",
+ "modified": "2023-12-22 19:15:02.660350",
  "modified_by": "Administrator",
  "module": "SummitApp",
- "name": "Item Specifications Value",
+ "name": "Item Specifications",
  "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [

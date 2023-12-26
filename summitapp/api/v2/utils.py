@@ -574,3 +574,64 @@ def get_company_motto_details(doc):
     except Exception as e:
         frappe.logger("utils").exception(e)
         return error_response(str(e))
+
+
+def get_product_specifications(kwargs):
+    try:
+        prod_specifications = frappe.get_all("Specifications Name",
+                                             filters={"parent": kwargs.get("name")},
+                                             fields=["name1"],
+                                             order_by="idx")
+        result = []
+
+        for spec in prod_specifications:
+            item_specs = frappe.get_all("Item Specifications",
+                                        filters={"name": spec.get("name1")},
+                                        fields=["name", "name1"])
+            
+            spec_values = []
+            for item_spec in item_specs:
+                spec_details = frappe.get_all("Item Specifications Details",
+                                              filters={'parent': item_spec.get("name")},
+                                              fields=["item_specifications_value"],
+                                              order_by="idx")
+                
+                item_values = []
+                for spec_detail in spec_details:
+                    spec_value = frappe.get_all("Item Specifications Value",
+                                                filters={"name": spec_detail.get("item_specifications_value")},
+                                                fields=["name_value"])
+                    value_details = frappe.get_all("Item Specifications Value Details",
+                                                   filters={"parent": spec_detail.get("item_specifications_value")},
+                                                   fields=["value"],
+                                                   order_by="idx")
+
+                    value_list = []
+                    for value_detail in value_details:
+                        for value in spec_value:
+                            value_list.append({"value": value_detail.get("value")})
+
+                    item_values.append({"name": value.get("name_value"), "values": value_list})
+
+                spec_values.append({
+                    "name": item_spec.get("name1"),
+                    "values": item_values
+                })
+
+            result.extend(spec_values)
+
+        return success_response(data=result)
+    except Exception as e:
+        frappe.logger("utils").exception(e)
+        # Assuming error_response is a function that creates an error response
+        return error_response(str(e))
+
+
+
+
+
+
+
+	
+
+	
