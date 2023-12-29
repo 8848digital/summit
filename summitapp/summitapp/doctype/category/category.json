@@ -28,7 +28,9 @@
   "rgt",
   "is_group",
   "old_parent",
-  "parent_category"
+  "parent_category",
+  "menu",
+  "is_product_category"
  ],
  "fields": [
   {
@@ -150,12 +152,25 @@
    "fieldname": "heading",
    "fieldtype": "Data",
    "label": "Heading"
+  },
+  {
+   "fieldname": "menu",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Menu"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_product_category",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is Product Category"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2023-11-20 14:44:39.312765",
+ "modified": "2023-12-28 15:28:04.069009",
  "modified_by": "Administrator",
  "module": "SummitApp",
  "name": "Category",

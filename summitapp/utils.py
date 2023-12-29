@@ -21,7 +21,6 @@ def success_response(data=None, id=None):
 
 
 def error_response(err_msg):
-	# frappe.log_error(frappe.get_traceback(), 'Api Error')
 	return {
 		'msg': 'error',
 		'error': err_msg

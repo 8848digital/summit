@@ -13,22 +13,10 @@ def get(kwargs):
 		category_list = [{'values': get_sub_cat(cat, allowed_categories=categories), **cat} for cat in category_list]
 		return category_list
 	except Exception as e:
-		frappe.logger('mega menu').exception(e)
+		frappe.logger('registration').exception(e)
 		return error_response(e)
 
-@frappe.whitelist(allow_guest=True)
-def get_mega_menu(kwargs):
-	try:
-		web_settings = frappe.get_doc("Web Settings")
-		if web_settings.use_pc_as_menu == 1:
-			menu = get(kwargs)
-		else:
-			menu = get_navbar_data(kwargs)
-		return success_response(data=menu)	
-	except Exception as e:
-		frappe.logger('mega menu').exception(e)
-		return error_response(e)
-	
+
 def breadcrums(kwargs):
 	try:
 		listing_map = {
@@ -80,13 +68,13 @@ def breadcrums(kwargs):
 		return error_response('error fetching breadcrums url')
 	
 
-def get_sub_cat(cat, url=None, allowed_categories = None):
+def get_sub_cat(cat, allowed_categories = None):
 	filters = {'parent_category': cat['name']}
 	if allowed_categories:
 		filters.update({"name": ["in", allowed_categories]})
 	sub_cat_list = get_item_list('Category', filters=filters)
 	sub_cat_list = [{
-						'url': prepare_url("product-category", sub_cat['slug'], parent = url), 
+						'url': prepare_url("product-category", sub_cat['slug'], parent = None), 
 						'values': get_sub_cat(sub_cat, allowed_categories=allowed_categories), 
 						**sub_cat
 					} for sub_cat in sub_cat_list]
@@ -116,57 +104,61 @@ def prepare_url(prefix, category, parent=None):
 		return f"/{prefix}/{category}"
 	
 
-def get_navbar_data(kwargs):
-    try:
-        user_language = kwargs.get('language')
-        parent_categories = frappe.get_all("Website Navigation Menu", filters={"is_group": 1}, fields=["menu", "label","sequence", "slug","url","is_product_category"],order_by="sequence")
+def get_menu(kwargs):
+	try:
+		filters = {'parent_category':['is','not set']}
+		categories = get_allowed_categories()
+		if categories:
+			filters.update({"name": ["in", categories]})
+		category_list = get_item_menu('Website Navigation Menu', filters)
+		category_list = [{
+			'url': create_url(cat['slug'],cat['is_product_category'],parent= None), 
+			'values': get_sub_menu(cat,allowed_categories=categories), 
+					**cat} for cat in category_list]
+		return category_list
+	except Exception as e:
+		frappe.logger('registration').exception(e)
+		return error_response(e)
+	
+def get_sub_menu(cat, allowed_categories = None):
+	filters = {'parent_category': cat['name']}
+	if allowed_categories:
+		filters.update({"name": ["in", allowed_categories]})
+	sub_cat_list = get_item_menu('Website Navigation Menu', filters=filters)
+	sub_cat_list = [{
+						'url': create_url(sub_cat['slug'],sub_cat['is_product_category'],cat['slug']), 
+						'values': get_sub_menu(sub_cat, allowed_categories=allowed_categories), 
+						**sub_cat
+					} for sub_cat in sub_cat_list]
+	
+	return sub_cat_list
 
-        navbar_data = []
+def get_item_menu(doctype, filters):
+	ignore_permissions = frappe.session.user == "Guest"
+	return frappe.get_list(doctype,
+						   filters=filters,
+						   fields=['name', 'label', 'sequence as seq', 'slug', 'image','is_product_category'],
+						   order_by='sequence', ignore_permissions=ignore_permissions)
 
-        for category in parent_categories:
-            parent = None
-            navbar_item = {
-                "name": category.menu,
-                "label": category.label,
-                "url": create_url(category.slug, category.is_product_category, category.url, parent),
-                "seq": category.sequence,
-                "slug": category.slug,
-                "navbar_values": []
-            }
-
-            child_categories = frappe.get_all("Website Navigation Menu", filters={"parent_category": category.menu}, fields=["menu", "label", "sequence", "slug","url","is_product_category"],order_by="sequence")
-            print("child categories", child_categories)
-            for child_category in child_categories:
-                child_navbar_item = {
-                    "name": child_category.menu,
-                    "label": child_category.label,
-                    "url": create_url(child_category.slug, child_category.is_product_category, child_category.url, category.slug),
-                    "seq": child_category.sequence,
-                    "slug": child_category.slug,
-                    "navbar_values": []
-                }
-                navbar_item['navbar_values'].append(child_navbar_item)
-
-            navbar_data.append(navbar_item)
-        # translated_data = translate_keys(navbar_data, user_language)
-        return navbar_data
-    except Exception as e:
-        frappe.logger("Navbar").exception(e)
-        return error_response(e)
-
-
-def create_url(prefix, pc, url, parent=None):
-    print("PC", pc)
+def create_url(prefix, pc, parent=None):
     if parent and pc == 0:
         return f"/{parent}/{prefix}"
     elif pc == 1:
         return f"/product-category/{prefix}"
-    elif url is not None:
-        return url
     elif prefix:
         return f"/{prefix}"
     else:
         return ""
-
-
 	
+@frappe.whitelist(allow_guest=True)
+def get_mega_menu(kwargs):
+	try:
+		web_settings = frappe.get_doc("Web Settings")
+		if web_settings.use_pc_as_menu == 1:
+			menu = get(kwargs)
+		else:
+			menu = get_menu(kwargs)
+		return success_response(data=menu)	
+	except Exception as e:
+		frappe.logger('mega menu').exception(e)
+		return error_response(e)	
