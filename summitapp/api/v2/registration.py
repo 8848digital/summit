@@ -13,6 +13,7 @@ def customer_signup(kwargs):
 		frappe.local.login_manager.login_as('Administrator')
 		create_user(kwargs)
 		customer_doc = create_customer(kwargs)
+		print(customer_doc)
 		if not kwargs.get('via_google', False):
 			create_address(kwargs,customer_doc.name) # for billing
 			kwargs['address_type'] = "Shipping"
@@ -21,7 +22,7 @@ def customer_signup(kwargs):
 		return success_response(data = customer_doc.name)
 	except Exception as e:
 		frappe.logger("registration").exception(e) 
-		delete_documents(kwargs,customer_doc.name)
+		# delete_documents(kwargs,customer_doc.name)
 		return error_response(e)
 
 def change_password(kwargs):
@@ -106,9 +107,11 @@ def create_customer(kwargs):
 		'email': kwargs.get('usr') or kwargs.get('email'),
 		'type': 'Individual', 
 		'customer_group': kwargs.get('customer_group',frappe.db.get_single_value("E Commerce Settings","default_customer_group")),
-		'territory': 'All Territories'
+		'territory': 'All Territories',
+		'custom_sales_person': kwargs.get('sales_person')
 		})
 	customer_doc.insert(ignore_permissions=True)
+	print("customer",customer_doc)
 	return customer_doc
 
 def reset_password(kwargs):

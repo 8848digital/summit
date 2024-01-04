@@ -378,7 +378,7 @@ def get_tagged_products(kwargs):
         tag = kwargs.get('tag')
         # Fetching the product limit from Tags MultiSelect
         tag_doc = frappe.get_doc("Tag", tag)
-        product_limit = tag_doc.product_limit
+        product_limit = tag_doc.custom_product_limit
 
         items = frappe.get_list("Tags MultiSelect", {"tag": tag}, pluck='parent', ignore_permissions=True)
         customer_id = kwargs.get("customer_id")

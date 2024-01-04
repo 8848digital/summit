@@ -9,7 +9,7 @@ from frappe.utils.data import get_url
 
 def validate_pincode(kwargs):
 	pincode = True if frappe.db.exists(
-		'Delivery Pincode', kwargs.get('pincode')) else False
+		'Pin Code', kwargs.get('pincode')) else False
 	return success_response(data=pincode)
 
 
@@ -96,6 +96,7 @@ def get_processed_list(currency,items, customer_id, url_type = "product"):
     return processed_items
 
 def get_item_field_values(currency,item, customer_id, url_type,field_names):
+    print("ite",item.get("name"))
     computed_fields = {
         'image_url': lambda: {'image_url': get_default_slide_images(item, True,"size")},
         'status': lambda: {'status': 'template' if item.get('has_variants') else 'published'},
@@ -121,6 +122,7 @@ def get_item_field_values(currency,item, customer_id, url_type,field_names):
 		'features': lambda: {'features': get_features(item.key_features) if item.key_features else []},
 		'why_to_buy': lambda: {'why_to_buy': frappe.db.get_value('Why To Buy', item.get("select_why_to_buy"), "name1")},
 		'prod_specifications': lambda: {'prod_specifications': get_specifications(item)},
+        'item_pdf_url':lambda:{'item_pdf_url':get_pdf_attachments("Item",item.get("name"))},
 		'store_pick_up_available': lambda: {'store_pick_up_available': item.get('store_pick_up_available') == 'Yes'},
 		'home_delivery_available': lambda: {'home_delivery_available': item.get('home_delivery_available') == 'Yes'}
     }
@@ -639,12 +641,17 @@ def get_contact_us(kwargs):
         return success_response(result)
     except Exception as e:
         frappe.logger("utils").exception(e)
-        # Assuming error_response is a function that creates an error response
         return error_response(str(e))    
 
 
 
-
-	
-
-	
+def get_pdf_attachments(doctype, doc_name):
+    try:
+        files = frappe.get_list("File", filters={"attached_to_doctype": doctype, "attached_to_name": doc_name},
+                                fields=['file_url'])
+        pdf_files = [file for file in files if file.get('file_url').endswith('.pdf')]
+        pdf_urls = [file.get('file_url') for file in pdf_files]
+        return pdf_urls
+    except Exception as e:
+        frappe.logger("utils").exception(e)
+        return error_response(str(e))
