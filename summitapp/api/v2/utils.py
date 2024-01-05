@@ -673,7 +673,8 @@ def get_home_page(kwargs):
         result = {
             "about_us_summary":home_page.about_us_summary,
             "image":home_page.image,
-            "about_us_link":home_page.about_us_link
+            "about_us_link":home_page.about_us_link,
+            "heading":home_page.heading
         }
         return success_response(result)
     except Exception as e:

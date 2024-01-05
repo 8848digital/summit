@@ -7,6 +7,7 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "heading",
   "about_us_summary",
   "image",
   "about_us_link"
@@ -26,12 +27,17 @@
    "fieldname": "about_us_link",
    "fieldtype": "Data",
    "label": "About Us Link"
+  },
+  {
+   "fieldname": "heading",
+   "fieldtype": "Data",
+   "label": "Heading"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2024-01-05 13:59:17.462098",
+ "modified": "2024-01-05 16:37:09.718837",
  "modified_by": "Administrator",
  "module": "SummitApp",
  "name": "Home Page",
