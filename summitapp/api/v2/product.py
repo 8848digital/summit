@@ -72,6 +72,7 @@ def get_list(kwargs):
             global_items = search(search_text, doctype='Item')
             count, data = get_list_data(None, {}, price_range, global_items, page_no, limit)
         result = get_processed_list(currency, data, customer_id, type)
+        print("RESTULT",result)
         total_count = count
         translated_item_fields = translate_result(result)
         if internal_call:

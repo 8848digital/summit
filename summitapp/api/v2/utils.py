@@ -92,11 +92,11 @@ def get_processed_list(currency,items, customer_id, url_type = "product"):
     processed_items = []
     for item in items:
         item_fields = get_item_field_values(currency,item, customer_id, url_type,field_names)
+        print("ITEM Fields",item_fields)
         processed_items.append(item_fields)
     return processed_items
 
 def get_item_field_values(currency,item, customer_id, url_type,field_names):
-    print("ite",item.get("name"))
     computed_fields = {
         'image_url': lambda: {'image_url': get_default_slide_images(item, True,"size")},
         'status': lambda: {'status': 'template' if item.get('has_variants') else 'published'},
