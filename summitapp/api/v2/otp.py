@@ -108,5 +108,32 @@ def send_twilio_sms(kwargs):
         frappe.msgprint(f"Failed to send SMS: {response.status_code}, {response.text}")
 
 
+def send_pinnacle_sms(kwargs):
+    try:
+     
+        url = "https://api.pinnacle.in/index.php/sms/json"
 
+        payload = json.dumps({
+        "sender": "vorinf",
+        "message": [
+            {
+            "number": "919619842421",
+            "text": "Dear Customer, Thank you for choosing Vortex Infotech! We appreciate your business. If you have any questions or need further assistance, feel free to contact us. Have a great day!",
+            "dlttempid": "1707170229196719185"
+            }
+        ],
+        "messagetype": "TXT"
+        })
+        headers = {
+        'Content-Type': 'application/json',
+        'apikey': '982873-eac150-ee9a79-912ce2-ba965a',
+        'Cookie': 'PHPSESSID=j8pgh4k3im5972fi722vo3sopg'
+        }
 
+        response = requests.request("POST", url, headers=headers, data=payload)
+
+        print(response.text)
+
+    except Exception as e:
+        frappe.logger("otp").exception(e)
+        return {"error": e}

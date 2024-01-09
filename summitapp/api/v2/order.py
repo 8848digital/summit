@@ -204,46 +204,48 @@ def get_listing_details(customer, order_id, date_range, is_cancelled, session_id
 
 
 
-def get_processed_order(orders,customer):
+def get_processed_order(orders, customer):
     field_names = get_field_names('Order')
     order_data = []
     for order in orders:
         tax_table = frappe.get_all("Sales Taxes and Charges", {'parent': order.name}, "*")
+        sales_invoice = frappe.get_all("Sales Invoice", {'sales_order': order.name}, "*")
         charges = get_charges_from_table({}, tax_table)
-        computed_fields ={
-			'tax':lambda: {"tax": charges.get("tax", 0)},
-			'shipping':lambda:{"shipping": charges.get("shipping", 0)},
-			'gateway_charge': lambda: {"gateway_charges": charges.get("gateway_charge", 0),},
-			'subtotal_include_tax': lambda:{"subtotal_include_tax": order.total + charges.get("tax", 0)},
-			'subtotal_exclude_tax': lambda:{"subtotal_exclude_tax":order.total},
-			'total':lambda:{"total": order.rounded_total - order.store_credit_used},
-			'creation': lambda: {"creation": get_creation_date_time(order.name)},
-			'order_details': lambda: {"order_details": get_product_details(order.name)},
-			'payment_status':lambda:{"payment_status" : order.get("workflow_state")},
-			'coupon_code':lambda:{"coupon_code": order.get("coupon_code")},
-			'coupon_amount':lambda:{"coupon_amount" : order.get("discount_amount")},
-			'currency':lambda:{'currency':get_currency(order.currency)},
-			'currency_symbol':lambda:{'currency_symbol':get_currency_symbol(order.currency)},
-			'addresses': lambda:{"addresses": get_address(customer, order.customer_address, order.shipping_address_name)},
-			'shipping_method': lambda:{'shipping_method':{
-				"transporter": order.transporter,
+        computed_fields = {
+            'tax': lambda: {"tax": charges.get("tax", 0)},
+            'shipping': lambda: {"shipping": charges.get("shipping", 0)},
+            'gateway_charge': lambda: {"gateway_charges": charges.get("gateway_charge", 0)},
+            'subtotal_include_tax': lambda: {"subtotal_include_tax": order.total + charges.get("tax", 0)},
+            'subtotal_exclude_tax': lambda: {"subtotal_exclude_tax": order.total},
+            'total': lambda: {"total": order.rounded_total - order.store_credit_used},
+            'creation': lambda: {"creation": get_creation_date_time(order.name)},
+            'order_details': lambda: {"order_details": get_product_details(order.name)},
+            'payment_status': lambda: {"payment_status": order.get("workflow_state")},
+            'coupon_code': lambda: {"coupon_code": order.get("coupon_code")},
+            'coupon_amount': lambda: {"coupon_amount": order.get("discount_amount")},
+            'currency': lambda: {'currency': get_currency(order.currency)},
+            'currency_symbol': lambda: {'currency_symbol': get_currency_symbol(order.currency)},
+            'addresses': lambda: {"addresses": get_address(customer, order.customer_address, order.shipping_address_name)},
+            'shipping_method': lambda: {'shipping_method': {
+                "transporter": order.transporter,
                 "transport_charges": order.transport_charges,
                 "door_delivery": order.door_delivery,
                 "godown_delivery": order.godown_delivery,
                 "location": order.location,
                 "remarks": order.remarks
-			}},
-			'outstanding_amount':lambda:{"outstanding_amount": frappe.db.get_value("Return Replacement Request", {"new_order_id": order.name}, "outstanding_amount") or 0}
-			}
+            }},
+            'outstanding_amount': lambda: {"outstanding_amount": frappe.db.get_value("Return Replacement Request", {"new_order_id": order.name}, "outstanding_amount") or 0},
+            'print_url': lambda: {"print_url": get_pdf_link("Sales Invoice", sales_invoice[0].name)}
+        }
         charges_fields = {}
         for field_name in field_names:
             if field_name in computed_fields.keys():
                 charges_fields.update(computed_fields.get(field_name)())
             else:
                 charges_fields.update({field_name: order.get(field_name)})
-        order_data.append(charges_fields)    
+        order_data.append(charges_fields)
     return order_data
-                
+
 	
 def get_product_details(order):
 	quot_doc = frappe.get_doc('Sales Order', order)
@@ -422,6 +424,7 @@ def get_order_details(kwargs):
 		return "Invalid Order Id"
 	try:
 		doc = frappe.get_doc("Sales Order", kwargs.get("order_id"))
+		sales_invoice = frappe.get_all("Sales Invoice", {'sales_order': doc.name}, "*")
 		tax = 0
 		shipping = 0
 		for row in doc.get("taxes", []):
@@ -435,7 +438,8 @@ def get_order_details(kwargs):
 			"revenue": doc.rounded_total or doc.grand_total,
 			"tax": tax,
 			"shipping": shipping,
-			"coupon": doc.get("coupon_code")
+			"coupon": doc.get("coupon_code"),
+			"print_url": get_pdf_link("Sales Invoice", sales_invoice[0].name)
 		}
 		products = []
 		for row in doc.items:
@@ -481,3 +485,9 @@ def recently_bought(kwargs):
 	except Exception as e:
 		frappe.logger("order").exception(e)
 		return error_response(e)
+
+
+def get_pdf_link(voucher_type, voucher_no, print_format ="GST-Tax Invoice"):
+	if print_format:
+		return f"{frappe.utils.get_url()}/api/method/frappe.utils.print_format.download_pdf?doctype={voucher_type}&name={voucher_no}&format={print_format}&no_letterhead=1&letterhead=No Letterhead&lang=en"
+	return "#"		
