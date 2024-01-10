@@ -209,7 +209,15 @@ def get_processed_order(orders, customer):
     order_data = []
     for order in orders:
         tax_table = frappe.get_all("Sales Taxes and Charges", {'parent': order.name}, "*")
-        sales_invoice = frappe.get_all("Sales Invoice", {'sales_order': order.name}, "*")
+        try:
+            sales_invoice = frappe.get_doc("Sales Invoice", {'sales_order': order.name}, "*")
+            if sales_invoice:
+                print_url = get_pdf_link("Sales Invoice", sales_invoice.name)
+            else:
+                print_url = ""
+        except frappe.DoesNotExistError as e:
+            print(f"Sales Invoice not found for order {order.name}: {e}")
+            print_url = ""
         charges = get_charges_from_table({}, tax_table)
         computed_fields = {
             'tax': lambda: {"tax": charges.get("tax", 0)},
@@ -235,7 +243,7 @@ def get_processed_order(orders, customer):
                 "remarks": order.remarks
             }},
             'outstanding_amount': lambda: {"outstanding_amount": frappe.db.get_value("Return Replacement Request", {"new_order_id": order.name}, "outstanding_amount") or 0},
-            'print_url': lambda: {"print_url": get_pdf_link("Sales Invoice", sales_invoice[0].name)}
+            'print_url': lambda: {"print_url": print_url}
         }
         charges_fields = {}
         for field_name in field_names:
@@ -245,6 +253,7 @@ def get_processed_order(orders, customer):
                 charges_fields.update({field_name: order.get(field_name)})
         order_data.append(charges_fields)
     return order_data
+
 
 	
 def get_product_details(order):
