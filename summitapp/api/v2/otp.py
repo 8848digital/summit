@@ -110,30 +110,47 @@ def send_twilio_sms(kwargs):
 
 def send_pinnacle_sms(kwargs):
     try:
-     
-        url = "https://api.pinnacle.in/index.php/sms/json"
-
+        pinnacle_settings = frappe.get_doc("Pinnacle SMS Settings")
+        print("111",pinnacle_settings.url,pinnacle_settings.apikey,pinnacle_settings.sender,pinnacle_settings.messagetype,pinnacle_settings.dlttempid,pinnacle_settings.contenttype)
+        phone = (kwargs.get("phone"))
+        print("phone",phone)
+        otp_length = 6
+        otp = "".join([f"{random.randint(0, 9)}" for _ in range(otp_length)])
+        key = f"{phone}_otp"
+        otp_json = {
+            "id": key,
+            "otp": otp,
+            "timestamp": str(frappe.utils.get_datetime().utcnow()),
+        }
+        rs = frappe.cache()
+        rs.set_value(key, json.dumps(otp_json))
         payload = json.dumps({
-        "sender": "vorinf",
+        "sender": pinnacle_settings.sender,
         "message": [
             {
-            "number": "919619842421",
-            "text": "Dear Customer, Thank you for choosing Vortex Infotech! We appreciate your business. If you have any questions or need further assistance, feel free to contact us. Have a great day!",
-            "dlttempid": "1707170229196719185"
+            "number": phone,
+            "text": f"Dear User, your OTP to register with Vortex Infotech is {otp} and is valid for 5 min.",
+            "dlttempid": pinnacle_settings.dlttempid
             }
         ],
-        "messagetype": "TXT"
+        "messagetype": pinnacle_settings.messagetype
         })
         headers = {
-        'Content-Type': 'application/json',
-        'apikey': '982873-eac150-ee9a79-912ce2-ba965a',
-        'Cookie': 'PHPSESSID=j8pgh4k3im5972fi722vo3sopg'
+        'Content-Type': pinnacle_settings.contenttype,
+        'apikey': pinnacle_settings.apikey,
+       
         }
 
-        response = requests.request("POST", url, headers=headers, data=payload)
+        response = requests.request("POST", pinnacle_settings.url, headers=headers, data=payload)
 
         print(response.text)
-
+        if response.code == 200 and response.status == "success":
+            return success_response("OTP sent on your phone number!")
     except Exception as e:
         frappe.logger("otp").exception(e)
         return {"error": e}
+
+
+
+
+
