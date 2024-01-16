@@ -55,7 +55,7 @@ def verify_otp(kwargs):
         if email:
             key = f"{email}_otp"
         if phone:
-            key = f"+{phone}_otp"
+            key = f"+{phone}_otp" or f"{phone}_otp"
         otp = kwargs.get("otp")
         rs = frappe.cache()
         stored_otp = rs.get_value(key)
@@ -113,10 +113,10 @@ def send_pinnacle_sms(kwargs):
         pinnacle_settings = frappe.get_doc("Pinnacle SMS Settings")
         print("111",pinnacle_settings.url,pinnacle_settings.apikey,pinnacle_settings.sender,pinnacle_settings.messagetype,pinnacle_settings.dlttempid,pinnacle_settings.contenttype)
         phone = (kwargs.get("phone"))
-        print("phone",phone)
+        phone_number = f"+{phone}"
         otp_length = 6
         otp = "".join([f"{random.randint(0, 9)}" for _ in range(otp_length)])
-        key = f"{phone}_otp"
+        key = f"{phone_number}_otp"
         otp_json = {
             "id": key,
             "otp": otp,
@@ -128,7 +128,7 @@ def send_pinnacle_sms(kwargs):
         "sender": pinnacle_settings.sender,
         "message": [
             {
-            "number": phone,
+            "number": phone_number,
             "text": f"Dear User, your OTP to register with Vortex Infotech is {otp} and is valid for 5 min.",
             "dlttempid": pinnacle_settings.dlttempid
             }
@@ -140,11 +140,10 @@ def send_pinnacle_sms(kwargs):
         'apikey': pinnacle_settings.apikey,
        
         }
-
         response = requests.request("POST", pinnacle_settings.url, headers=headers, data=payload)
-
-        print(response.text)
-        if response.code == 200 and response.status == "success":
+        json_response = response.json()
+        print("json response",json_response)
+        if json_response["code"] == 200 and json_response["status"] == "success":
             return success_response("OTP sent on your phone number!")
     except Exception as e:
         frappe.logger("otp").exception(e)
