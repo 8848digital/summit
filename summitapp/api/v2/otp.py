@@ -1,5 +1,6 @@
 import frappe
-from summitapp.utils import success_response, error_response, send_mail,check_user_exists
+from summitapp.utils import success_response, error_response,send_mail,check_user_exists
+from summitapp.api.v2.access_token import get_token_with_mobile
 import json 
 import requests
 import random
@@ -150,6 +151,18 @@ def send_pinnacle_sms(kwargs):
         return {"error": e}
 
 
-
+def login_with_mobile_otp(kwargs):
+    try:
+        mobile = kwargs.get('contact_no') or kwargs.get("contact") or kwargs.get("phone")
+        user = get_token_with_mobile(mobile)
+        print("user",user)
+        if user:
+            otp = send_pinnacle_sms(kwargs)
+            return {'msg': 'success', 'otp_status': otp, 'access_token': user}
+        else:
+            return error_response("User not exist with this mobile number")
+    except Exception as e:
+        frappe.logger("otp").exception(e)
+    
 
 

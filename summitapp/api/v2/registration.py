@@ -90,6 +90,8 @@ def create_user(kwargs):
 		'new_password': kwargs.get("password") or frappe.generate_hash(),
 		'first_name': kwargs.get("name"),
 		'language':kwargs.get("language_code"),
+		'mobile_no': kwargs.get('contact_no') or kwargs.get("contact") or kwargs.get("phone"),
+		'phone': kwargs.get('contact_no') or kwargs.get("contact") or kwargs.get("phone"),
 		'roles': [{"doctype": "Has Role", "role": "Customer"}],
 		"api_key" : frappe.generate_hash(length=15),  
 		"api_secret" : frappe.generate_hash(length=15) 
@@ -101,8 +103,8 @@ def create_customer(kwargs):
 	customer_doc = frappe.get_doc({
 		'doctype':"Customer",
 		'customer_name': kwargs.get('name'),
-		'mobile_no': kwargs.get('contact_no') or kwargs.get("contact") ,
-		'mobile_number': kwargs.get('contact_no') or kwargs.get("contact"),
+		'mobile_no': kwargs.get('contact_no') or kwargs.get("contact") or kwargs.get("phone"),
+		'mobile_number': kwargs.get('contact_no') or kwargs.get("contact") or kwargs.get("phone"),
 		'email_id': kwargs.get('usr') or kwargs.get('email'),
 		'email': kwargs.get('usr') or kwargs.get('email'),
 		'type': 'Individual', 

@@ -98,3 +98,23 @@ def get_token(email):
 		access_api_token = api_token
 			
 	return access_api_token 
+
+
+def get_token_with_mobile(mobile):
+    doc = frappe.get_doc("User", {'mobile_no': mobile})
+    
+    if doc:
+        api_key = doc.api_key
+        api_secret = doc.get_password('api_secret')
+        
+        if api_key and api_secret:
+            api_token = "token " + api_key + ":" + api_secret
+            access_api_token = api_token
+        else:
+            # Handle the case where either api_key or api_secret is not found
+            return error_response("API key or API secret not found")
+    else:
+        # Handle the case where the user is not found
+        return error_response("User not exist with this mobile number")
+    
+    return access_api_token

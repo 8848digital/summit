@@ -11,6 +11,14 @@ def check_user_exists(email):
 	"""
 	return frappe.db.exists('User', email)
 
+def check_user_exists_mobile(mobile):
+	"""
+	Check if a user with the provied mobile number.
+	"""
+	print("111",frappe.db.get_list('User', filters={"mobile_no":mobile},
+			fields=['email','new_password','api_key','api_secret']))
+	return frappe.db.get_list('User', filters={"mobile_no":mobile},
+			fields=['email','new_password','api_key','api_secret'])
 
 def success_response(data=None, id=None):
 	response = {'msg': 'success'}
