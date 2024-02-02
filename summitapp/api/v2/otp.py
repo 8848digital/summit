@@ -155,10 +155,12 @@ def login_with_mobile_otp(kwargs):
     try:
         mobile = kwargs.get('contact_no') or kwargs.get("contact") or kwargs.get("phone")
         user = get_token_with_mobile(mobile)
-        print("user",user)
         if user:
-            otp = send_pinnacle_sms(kwargs)
-            return {'msg': 'success', 'otp_status': otp, 'access_token': user}
+            otp = verify_otp(kwargs)
+            if otp.get("data") == 'OTP Verified': 
+                return {'msg': 'success', 'access_token': user}
+            else:
+                return error_response(otp.get("error"))
         else:
             return error_response("User not exist with this mobile number")
     except Exception as e:
