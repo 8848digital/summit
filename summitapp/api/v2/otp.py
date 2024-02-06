@@ -155,16 +155,16 @@ def login_with_mobile_otp(kwargs):
     try:
         mobile = kwargs.get('contact_no') or kwargs.get("contact") or kwargs.get("phone")
         user = get_token_with_mobile(mobile)
-        if user:
+        if user.get('msg') == 'success':
             otp = verify_otp(kwargs)
             if otp.get("data") == 'OTP Verified': 
-                return {'msg': 'success', 'access_token': user}
+                return user
             else:
                 return error_response(otp.get("error"))
         else:
-            return error_response("User not exist with this mobile number")
+            return error_response('User not found with this mobile number')
     except Exception as e:
         frappe.logger("otp").exception(e)
-    
+        return error_response(e) 
 
 
