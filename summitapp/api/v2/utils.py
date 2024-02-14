@@ -9,7 +9,7 @@ from frappe.utils.data import get_url
 
 def validate_pincode(kwargs):
 	pincode = True if frappe.db.exists(
-		'Delivery Pincode', kwargs.get('pincode')) else False
+		'Pin Code', kwargs.get('pincode')) else False
 	return success_response(data=pincode)
 
 
@@ -92,6 +92,7 @@ def get_processed_list(currency,items, customer_id, url_type = "product"):
     processed_items = []
     for item in items:
         item_fields = get_item_field_values(currency,item, customer_id, url_type,field_names)
+        print("ITEM Fields",item_fields)
         processed_items.append(item_fields)
     return processed_items
 
@@ -114,12 +115,14 @@ def get_item_field_values(currency,item, customer_id, url_type,field_names):
     	'alternate': lambda: {'alternate': bool(item.get('alternate') == '1')},
     	'mandatory': lambda: {'mandatory': bool(item.get('mandatory') == '1')},
     	'suggested': lambda: {'suggested': bool(item.get('suggested') == '1')},
+		'e_commerce_platforms':lambda: {'e_commerce_platforms':get_ecommerce_platforms(item)},
         'brand_video_url': lambda: {'brand_video_url': frappe.get_value('Brand', item.get('brand'), ['brand_video_link']) or None},
 		'size_chart': lambda: {'size_chart': frappe.get_value('Size Chart', item.get('size_chart'), 'chart')},
 		'slide_img': lambda: {'slide_img': get_default_slide_images(item, False,"size")},
 		'features': lambda: {'features': get_features(item.key_features) if item.key_features else []},
 		'why_to_buy': lambda: {'why_to_buy': frappe.db.get_value('Why To Buy', item.get("select_why_to_buy"), "name1")},
 		'prod_specifications': lambda: {'prod_specifications': get_specifications(item)},
+        'item_pdf_url':lambda:{'item_pdf_url':get_pdf_attachments("Item",item.get("name"))},
 		'store_pick_up_available': lambda: {'store_pick_up_available': item.get('store_pick_up_available') == 'Yes'},
 		'home_delivery_available': lambda: {'home_delivery_available': item.get('home_delivery_available') == 'Yes'}
     }
@@ -156,7 +159,7 @@ def get_product_url(item_detail, url_type = "product"):
 	item_cat = item_detail.get('category')
 	item_cat_slug = frappe.db.get_value('Category',item_cat,'slug')
 	product_slug = item_detail.get("slug")
-	from summitapp.api.v1.mega_menu import get_item_url
+	from summitapp.api.v2.mega_menu import get_item_url
 	return get_item_url(url_type, item_cat_slug, product_slug)
 
 
@@ -342,7 +345,7 @@ def get_slideshow_value(item_name):
 def get_features(key_feature):
 	key_features = frappe.get_all(
 		"Key Feature Detail", {"parent": key_feature}, pluck = "key_feature", order_by ="idx")
-	feat_val = frappe.get_all("Key Feature",{"key_feature": ["in",key_features]}, ["key_feature as heading", "description"], order_by = "idx")
+	feat_val = frappe.get_all("Key Feature",{"key_feature": ["in",key_features]}, ["key_feature as heading", "description","image"], order_by = "idx")
 	return {'name': 'Key Features', 'values': feat_val}
 
 
@@ -465,16 +468,215 @@ def get_logged_user():
     return user
 
 def get_customer_id(kwargs):
-    if kwargs.get('customer_id'):
-        customer_id = kwargs.get('customer_id')
-    elif frappe.request.headers:
+    customer_id = kwargs.get('customer_id')
+    
+    if not customer_id and frappe.request.headers:
         email = get_logged_user()
         customer_id = frappe.db.get_value("Customer", {"email": email}, 'name')
-    else:
-        customer_id = None
     return customer_id
+
 
 def get_guest_user(auth_header):
 	guest_user = frappe.db.get_value("Access Token", {"token": auth_header}, 'email')
 	if guest_user:
 		return guest_user
+
+def get_ecommerce_platforms(item):
+    try:
+        platforms = frappe.get_all("E Commerce Platforms",
+                                   filters={"parent": item.name},
+                                   fields=["platform", "link", "sequence"],
+                                   order_by="sequence")
+        return platforms  # Adjusted indentation here
+    except Exception as e:
+        frappe.logger("product").exception(e)
+        return error_response(e)
+
+
+def get_marquee(kwargs):
+    try:
+        marquee = frappe.get_doc("Marquee")
+        result = [
+            {"heading_1": marquee.heading_1},
+            {"heading_2": marquee.heading_2},
+            {"heading_3": marquee.heading_3},
+            {"heading_4": marquee.heading_4},
+            {"heading_5": marquee.heading_5},
+            {"heading_6": marquee.heading_6},
+            {"heading_7": marquee.heading_7},
+            {"heading_8": marquee.heading_8},
+            {"heading_9": marquee.heading_9},
+            {"heading_10": marquee.heading_10},
+        ]
+        return success_response(result)
+    except Exception as e:
+        frappe.logger("product").exception(e)
+        return error_response(e)
+
+	
+
+def get_testomonial(kwargs):
+    try:
+        if not kwargs.get('category'): 
+            return error_response('Please Specify Category')
+        
+        test_doc = frappe.get_list("Testomonial",
+                                 filters={"category": kwargs.get("category")},
+                                 fields=["category", "heading", "description","name"])
+        
+        test_with_details = []
+        for t in test_doc:
+            details = get_testomonial_details(t['name'])  # Fetch images for each review
+            t['details'] = details  # Append images to the review
+            test_with_details.append(t)
+        response_data = test_with_details
+        return success_response(response_data)
+    
+    except Exception as e:
+        frappe.logger("utils").exception(e)
+        return error_response(str(e))
+
+
+def get_testomonial_details(doc):
+    try:
+        details = frappe.get_all("Testomonial Details",
+                                   filters={"parent": doc},
+                                   fields=["image","name1","comment","url","label","sequence"],ignore_permissions=True,order_by="sequence")
+        return details
+    except Exception as e:
+        frappe.logger("profile").exception(e)
+        return error_response(str(e))
+	
+
+def get_company_motto(kwargs):
+    try:
+        # Assuming frappe.get_doc() returns a document with the specified fields
+        company_motto = frappe.get_doc("Company Motto")
+        result = {
+            "heading_1": company_motto.heading_1,
+            "heading_2": company_motto.heading_2,
+            "heading_3": company_motto.heading_3,
+            "description_1": company_motto.description_1,
+            "description_2": company_motto.description_2,
+            "details": get_company_motto_details(company_motto)
+        }
+        return success_response(result)
+    
+    except Exception as e:
+        frappe.logger("utils").exception(e)
+        return error_response(str(e))
+
+
+def get_company_motto_details(doc):
+    try:
+        details = frappe.get_all("Company Motto Details",
+                                   filters={"parent": doc},
+                                   fields=["image","heading","sequence"],order_by="sequence")
+        return details
+    except Exception as e:
+        frappe.logger("utils").exception(e)
+        return error_response(str(e))
+
+
+def get_product_specifications(kwargs):
+    try:
+        prod_specifications = frappe.get_all("Specifications Name",
+                                             filters={"parent": kwargs.get("name")},
+                                             fields=["name1"],
+                                             order_by="idx")
+        result = []
+
+        for spec in prod_specifications:
+            item_specs = frappe.get_all("Item Specifications",
+                                        filters={"name": spec.get("name1")},
+                                        fields=["name", "name1"])
+            
+            spec_values = []
+            for item_spec in item_specs:
+                spec_details = frappe.get_all("Item Specifications Details",
+                                              filters={'parent': item_spec.get("name")},
+                                              fields=["item_specifications_value"],
+                                              order_by="idx")
+                
+                item_values = []
+                for spec_detail in spec_details:
+                    spec_value = frappe.get_all("Item Specifications Value",
+                                                filters={"name": spec_detail.get("item_specifications_value")},
+                                                fields=["name_value"])
+                    value_details = frappe.get_all("Item Specifications Value Details",
+                                                   filters={"parent": spec_detail.get("item_specifications_value")},
+                                                   fields=["value"],
+                                                   order_by="idx")
+
+                    value_list = []
+                    for value_detail in value_details:
+                        for value in spec_value:
+                            value_list.append({"value": value_detail.get("value")})
+
+                    item_values.append({"name": value.get("name_value"), "values": value_list})
+
+                spec_values.append({
+                    "name": item_spec.get("name1"),
+                    "values": item_values
+                })
+
+            result.extend(spec_values)
+
+        return success_response(data=result)
+    except Exception as e:
+        frappe.logger("utils").exception(e)
+        # Assuming error_response is a function that creates an error response
+        return error_response(str(e))
+
+
+def get_contact_us(kwargs):
+    try:
+        contact_us = frappe.get_doc("Contact Us")
+        result = {
+            "sales_email_id":contact_us.sales_email_id,
+            "sales_contact_number":contact_us.sales_contact_number,
+            "supports_email_id":contact_us.supports_email_id,
+            "supports_contact_number":contact_us.supports_contact_number
+        }
+        return success_response(result)
+    except Exception as e:
+        frappe.logger("utils").exception(e)
+        return error_response(str(e))    
+
+
+
+def get_pdf_attachments(doctype, doc_name):
+    try:
+        files = frappe.get_list("File", filters={"attached_to_doctype": doctype, "attached_to_name": doc_name},
+                                fields=['file_url'])
+        pdf_files = [file for file in files if file.get('file_url').endswith('.pdf')]
+        pdf_urls = [file.get('file_url') for file in pdf_files]
+        return pdf_urls
+    except Exception as e:
+        frappe.logger("utils").exception(e)
+        return error_response(str(e))
+
+def get_about_us(kwargs):
+    try:
+        about_us = frappe.get_doc("About Us")
+        result = {
+            "description":about_us.description
+        }
+        return success_response(result)
+    except Exception as e:
+        frappe.logger("utils").exception(e)
+        return error_response(str(e))   
+    
+def get_home_page(kwargs):
+    try:
+        home_page = frappe.get_doc("Home Page")
+        result = {
+            "about_us_summary":home_page.about_us_summary,
+            "image":home_page.image,
+            "about_us_link":home_page.about_us_link,
+            "heading":home_page.heading
+        }
+        return success_response(result)
+    except Exception as e:
+        frappe.logger("utils").exception(e)
+        return error_response(str(e))   

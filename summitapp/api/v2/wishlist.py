@@ -1,7 +1,7 @@
 import frappe
 from summitapp.utils import error_response, success_response
-from summitapp.api.v1.utils import get_processed_list
-from summitapp.api.v1.product import get_item
+from summitapp.api.v2.utils import get_processed_list
+from summitapp.api.v2.product import get_item
 
 
 def add_to_wishlist(kwargs):

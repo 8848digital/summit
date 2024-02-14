@@ -1,6 +1,6 @@
 import frappe
 from frappe.exceptions import DuplicateEntryError
-from summitapp.utils import success_response, error_response, send_mail
+from summitapp.utils import success_response, error_response, send_mail,check_user_exists
 
 def customer_signup(kwargs):
 	try:
@@ -21,7 +21,7 @@ def customer_signup(kwargs):
 		return success_response(data = customer_doc.name)
 	except Exception as e:
 		frappe.logger("registration").exception(e) 
-		delete_documents(kwargs,customer_doc.name)
+		# delete_documents(kwargs,customer_doc.name)
 		return error_response(e)
 
 def change_password(kwargs):
@@ -89,6 +89,8 @@ def create_user(kwargs):
 		'new_password': kwargs.get("password") or frappe.generate_hash(),
 		'first_name': kwargs.get("name"),
 		'language':kwargs.get("language_code"),
+		'mobile_no': kwargs.get('contact_no') or kwargs.get("contact") or kwargs.get("phone"),
+		'phone': kwargs.get('contact_no') or kwargs.get("contact") or kwargs.get("phone"),
 		'roles': [{"doctype": "Has Role", "role": "Customer"}],
 		"api_key" : frappe.generate_hash(length=15),  
 		"api_secret" : frappe.generate_hash(length=15) 
@@ -97,16 +99,19 @@ def create_user(kwargs):
 
 def create_customer(kwargs):
 	# create customer document
+	account_manager = check_user_exists(kwargs.get('email'))
 	customer_doc = frappe.get_doc({
 		'doctype':"Customer",
 		'customer_name': kwargs.get('name'),
-		'mobile_no': kwargs.get('contact_no') or kwargs.get("contact") ,
-		'mobile_number': kwargs.get('contact_no') or kwargs.get("contact"),
+		'mobile_no': kwargs.get('contact_no') or kwargs.get("contact") or kwargs.get("phone"),
+		'mobile_number': kwargs.get('contact_no') or kwargs.get("contact") or kwargs.get("phone"),
 		'email_id': kwargs.get('usr') or kwargs.get('email'),
 		'email': kwargs.get('usr') or kwargs.get('email'),
 		'type': 'Individual', 
 		'customer_group': kwargs.get('customer_group',frappe.db.get_single_value("E Commerce Settings","default_customer_group")),
-		'territory': 'All Territories'
+		'territory': 'All Territories',
+		'custom_sales_person': kwargs.get('sales_person'),
+		'account_manager':account_manager
 		})
 	customer_doc.insert(ignore_permissions=True)
 	return customer_doc

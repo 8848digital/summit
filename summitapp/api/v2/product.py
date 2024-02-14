@@ -5,8 +5,8 @@ from frappe import _
 from frappe.model.db_query import DatabaseQuery
 from frappe.utils.global_search import search
 from frappe.utils import flt, cint, today, add_days
-from summitapp.api.v1.translation import translate_result
-from summitapp.api.v1.utils import (check_brand_exist, get_filter_list, get_filter_listing,
+from summitapp.api.v2.translation import translate_result
+from summitapp.api.v2.utils import (check_brand_exist, get_filter_list, get_filter_listing,
                                        get_slide_images, get_stock_info, 
 									   get_processed_list, get_item_field_values, 
 									   get_field_names, create_user_tracking,
@@ -23,7 +23,7 @@ def get_list(kwargs):
         customer_id = get_customer_id(kwargs)
         user_role = frappe.session.user
         product_limit = get_list_product_limit(user_role, customer_id)
-        if product_limit is not 0:
+        if product_limit != 0:
             limit = product_limit
         else:
             limit = kwargs.get('limit', 20)
@@ -72,6 +72,7 @@ def get_list(kwargs):
             global_items = search(search_text, doctype='Item')
             count, data = get_list_data(None, {}, price_range, global_items, page_no, limit)
         result = get_processed_list(currency, data, customer_id, type)
+        print("RESTULT",result)
         total_count = count
         translated_item_fields = translate_result(result)
         if internal_call:
@@ -158,7 +159,7 @@ def get_cyu_categories(kwargs):
 	ignore_permissions = frappe.session.user == "Guest"
 	return frappe.get_list('CYU Categories',
 							   filters={},
-							   fields=['name as product_category', 'image as product_img', 'slug', 'url as category_url', 'description'],
+							   fields=['name as product_category', 'heading','label','image as product_img', 'slug', 'url as category_url', 'description','offer','range_start_from'],
 							   order_by='sequence',
 							   ignore_permissions=ignore_permissions)
 
@@ -349,7 +350,7 @@ def get_product_url(item_detail):
 		product_slug = frappe.db.get_value('Item', product_template, 'slug')
 	else:
 		product_slug = item_detail.get("slug")
-	from summitapp.api.v1.mega_menu import get_item_url
+	from summitapp.api.v2.mega_menu import get_item_url
 	return get_item_url('product', item_cat_slug, product_slug)
 
 
@@ -537,4 +538,4 @@ def get_default_currency(kwargs):
     return {
           'default_currency': default_currency,
           'company':company_name
-          }
+          }        

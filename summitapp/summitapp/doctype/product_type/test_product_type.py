@@ -1,4 +1,4 @@
-# Copyright (c) 2024, 8848 Digital LLP and Contributors
+# Copyright (c) 2023, 8848 Digital LLP and Contributors
 # See license.txt
 
 # import frappe

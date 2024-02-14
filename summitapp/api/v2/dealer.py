@@ -26,7 +26,7 @@ def get_dealer(kwargs):
             )
         result = []
         for dealer in dealer_list:
-            from summitapp.api.v1.profile import get_dealer_profile
+            from summitapp.api.v2.profile import get_dealer_profile
             dealer_doc = frappe.get_doc('Customer', dealer['name'])
             result.append(get_dealer_profile(dealer_doc).get('data'))
         if result[0] == None:

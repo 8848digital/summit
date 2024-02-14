@@ -1,18 +1,18 @@
 import frappe
 from summitapp.utils import (error_response, success_response, create_temp_user,
 			     get_company_address, check_guest_user, get_parent_categories,create_access_token)
-from summitapp.api.v1.product import get_stock_info, get_slide_images, get_recommendation, get_product_url
-from summitapp.api.v1.utils import (get_price_list,get_field_names,get_guest_user,
+from summitapp.api.v2.product import get_stock_info, get_slide_images, get_recommendation, get_product_url
+from summitapp.api.v2.utils import (get_price_list,get_field_names,get_guest_user,
 				    get_currency,get_currency_symbol,get_logged_user)
 from erpnext.controllers.accounts_controller import get_taxes_and_charges
 from frappe.utils import flt, getdate
 import json
-from summitapp.api.v1.translation import translate_result
+from summitapp.api.v2.translation import translate_result
 
 @frappe.whitelist(allow_guest=True)
 def get_list(kwargs):
     try:
-        email = None	
+        email = None
         token = None
         headers = frappe.request.headers
         if not headers or 'Authorization' not in headers:
@@ -30,9 +30,11 @@ def get_list(kwargs):
         return error_response(e)
 
 
+
 @frappe.whitelist(allow_guest=True)
 def put_products(kwargs):  
 	try:
+		print("put products")
 		access_token = None
 		email = None
 		if not frappe.request.headers.get('Authorization'):
@@ -355,7 +357,7 @@ def add_item_to_cart(item_list, access_token, currency, fields={}):
     quotation.flags.ignore_mandatory = True
     quotation.flags.ignore_permissions = True
     quotation.payment_schedule = []
-    quotation.save()
+    quotation.save(ignore_permissions=True)
 
     item_codes = ", ".join([row.item_code for row in quotation.items])
     return f'Item {item_codes} Added To Cart'
@@ -407,7 +409,7 @@ def get_quotation_history(kwargs):
 	if not customer:
 		return error_response('Please login as a customer')
 	send_quotation = kwargs.get("only_requested",1)
-	filters = {"party_name": customer, "send_quotation":send_quotation,"docstatus":1}
+	filters = {"party_name": customer, "docstatus":1}
 	quotations = frappe.get_list("Quotation",filters=filters,fields=["name","modified","total_qty", "rounded_total","grand_total"])
 	if quotations:
 		quotations = [
