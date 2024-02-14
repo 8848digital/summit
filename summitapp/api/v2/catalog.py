@@ -1,6 +1,6 @@
 import frappe
 from summitapp.utils import success_response,error_response
-from summitapp.api.v1.product import get_list as get_item_details
+from summitapp.api.v2.product import get_list as get_item_details
 
 
 def get(kwargs):

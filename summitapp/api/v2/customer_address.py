@@ -37,7 +37,7 @@ def get(kwargs):
 def put(kwargs):
 	try:
 		if "random" in frappe.session.user:
-			from summitapp.api.v1.signin import signin_as_guest
+			from summitapp.api.v2.signin import signin_as_guest
 			return signin_as_guest(kwargs)
 		email = kwargs.get("email") if "random" in frappe.session.user else frappe.session.user
 		user_id = kwargs.get('user_id')

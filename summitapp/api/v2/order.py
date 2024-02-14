@@ -2,15 +2,15 @@ import contextlib
 import frappe
 from frappe.utils import flt
 from summitapp.utils import error_response, success_response
-from summitapp.api.v1.product import get_slide_images, get_product_url, get_detailed_item_list
-from summitapp.api.v1.customer_address import get_details as get_address_details
+from summitapp.api.v2.product import get_slide_images, get_product_url, get_detailed_item_list
+from summitapp.api.v2.customer_address import get_details as get_address_details
 from erpnext.selling.doctype.quotation.quotation import make_sales_order
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
-from erpnext.e_commerce.shopping_cart.cart import _get_cart_quotation
-from summitapp.api.v1.cart import calculate_quot_taxes
-from summitapp.api.v1.utils import get_field_names,get_currency,get_currency_symbol,get_logged_user,get_guest_user
-
+from webshop.webshop.shopping_cart.cart import _get_cart_quotation
+from summitapp.api.v2.cart import calculate_quot_taxes
+from summitapp.api.v2.utils import get_field_names,get_currency,get_currency_symbol,get_logged_user,get_guest_user,get_customer_id
+import json
 
 @frappe.whitelist()
 def get_list(kwargs):
@@ -18,11 +18,12 @@ def get_list(kwargs):
 		order_id = kwargs.get('order_id')
 		date_range = kwargs.get('date_range')
 		is_cancelled = kwargs.get('is_cancelled')
+		session_id = kwargs.get('session_id')
 		email = frappe.session.user
-		if email == "Guest":
-			return error_response('Please Login As A Customer')
+		# if email == "Guest":
+		# 	return error_response('Please Login As A Customer')
 		customer = frappe.get_value("Customer",{'email':email})
-		result, order_count = get_listing_details(customer, order_id, date_range, is_cancelled)
+		result, order_count = get_listing_details(customer, order_id, date_range, is_cancelled,session_id)
 		return {'msg': 'success', 'data': result, 'order_count': order_count}
 	except Exception as e:
 		frappe.logger('product').exception(e)
@@ -45,8 +46,6 @@ def get_summary(kwargs):
 def get_razorpay_payment_url(kwargs):
 	try:
 		email = frappe.session.user
-		if email == "Guest":
-			return error_response('Please Login As A Customer')
 		kwargs['full_name'], kwargs['email'] = frappe.db.get_value('User', email, ['full_name','email']) or [None, None]
 		# Returns Checkout Url Of Razorpay for payments	
 		payment_details = get_payment_details(kwargs)
@@ -60,12 +59,12 @@ def get_razorpay_payment_url(kwargs):
 def get_order_id(kwargs):
 	try:
 		email = frappe.session.user
-		if email == "Guest":
-			return error_response('Please Login As A Customer')
-
+		session_id = kwargs.get('session_id')
 		customer = frappe.get_value("Customer",{'email':email}, 'name')
-		order_id = frappe.db.get_value('Sales Order', {'customer': customer}, 'name')
-		
+		if customer:
+			order_id = frappe.db.get_value('Sales Order', {'customer': customer}, 'name')
+		else:
+			order_id = frappe.db.get_value('Sales Order', {'custom_session_id': session_id}, 'name')
 		return success_response(data=order_id)
 	except Exception as e:
 		frappe.logger('utils').exception(e)
@@ -84,6 +83,31 @@ def get_payment_details(kwargs):
 		'currency': 'INR',
 		'redirect_to': f"failed"
 	}
+
+def razorpay_place_order(order_id=None, party_name=None, common_comment=None, payment_date=None,
+                billing_address_id=None, shipping_address_id=None, transporter=None,
+                transport_charges=None, door_delivery=None, godown_delivery=None,
+                location=None, remarks=None,company_gstin=None):
+	try:
+		frappe.set_user("Administrator")
+		if not order_id:	
+			quotation = _get_cart_quotation()
+		else:
+			quotation = frappe.get_doc('Quotation', order_id)
+			
+		quotation.common_comment = common_comment
+		quotation.transporter = transporter
+		quotation.door_delivery = door_delivery
+		quotation.godown_delivery = godown_delivery
+		quotation.location = location
+		quotation.remarks = remarks
+		quotation.transport_charges = transport_charges
+		quotation.party_name = party_name
+		order = submit_quotation(quotation, billing_address_id, shipping_address_id,payment_date,company_gstin)
+		return order
+	except Exception as e:
+		frappe.logger('order').exception(e)
+		return error_response(f"Cart Does Not Exists /{e}")
 
 def place_order(kwargs):
 	try:
@@ -112,13 +136,11 @@ def place_order(kwargs):
 		quotation.remarks = remarks
 		quotation.transport_charges = transport_charges
 		quotation.party_name = party_name
-		order = submit_quotation(quotation, billing_address_id, shipping_address_id,payment_date)
+		order = submit_quotation(quotation, billing_address_id, shipping_address_id,payment_date,None)
 		return order
 	except Exception as e:
 		frappe.logger('order').exception(e)
 		return error_response(f"Cart Does Not Exists /{e}")
-
-
 
 def get_summary_details(quot_doc):
 	charges = get_charges_from_table(quot_doc)
@@ -163,58 +185,76 @@ def get_charges_from_table(doc,table=[]):
 	charges['tax'] = charges.get("total",0) - charges.get("gateway_charge",0) - charges.get("shipping",0) - charges.get("assembly",0)
 	return charges
 
-def get_listing_details(customer, order_id, date_range, is_cancelled):
-    filters = [["Sales Order", "customer", "=", customer]]
+def get_listing_details(customer, order_id, date_range, is_cancelled, session_id):
+    filters = []
+    if customer:
+        filters.append(["Sales Order", "customer", "=", customer])
     if order_id:
         filters.append(["Sales Order", "name", "=", order_id])
     if is_cancelled:
         filters.append(["Sales Order", "status", "=", "Cancelled"])
     if date_range:
         filters = get_date_range_filter(filters, date_range)
+    if session_id:
+        filters.append(["Sales Order", "custom_session_id", "=", session_id])
+
     orders = frappe.get_all("Sales Order", filters=filters, fields="*")
-    charges_fields = get_processed_order(orders,customer)
+    charges_fields = get_processed_order(orders, customer)
     return charges_fields, len(charges_fields)
 
-def get_processed_order(orders,customer):
+
+
+def get_processed_order(orders, customer):
     field_names = get_field_names('Order')
     order_data = []
     for order in orders:
         tax_table = frappe.get_all("Sales Taxes and Charges", {'parent': order.name}, "*")
+        try:
+            sales_invoice = frappe.get_doc("Sales Invoice", {'sales_order': order.name}, "*")
+            if sales_invoice:
+                print_url = get_pdf_link("Sales Invoice", sales_invoice.name)
+            else:
+                print_url = ""
+        except frappe.DoesNotExistError as e:
+            print(f"Sales Invoice not found for order {order.name}: {e}")
+            print_url = ""
         charges = get_charges_from_table({}, tax_table)
-        computed_fields ={
-			'tax':lambda: {"tax": charges.get("tax", 0)},
-			'shipping':lambda:{"shipping": charges.get("shipping", 0)},
-			'gateway_charge': lambda: {"gateway_charges": charges.get("gateway_charge", 0),},
-			'subtotal_include_tax': lambda:{"subtotal_include_tax": order.total + charges.get("tax", 0)},
-			'subtotal_exclude_tax': lambda:{"subtotal_exclude_tax":order.total},
-			'total':lambda:{"total": order.rounded_total - order.store_credit_used},
-			'creation': lambda: {"creation": get_creation_date_time(order.name)},
-			'order_details': lambda: {"order_details": get_product_details(order.name)},
-			'payment_status':lambda:{"payment_status" : order.get("workflow_state")},
-			'coupon_code':lambda:{"coupon_code": order.get("coupon_code")},
-			'coupon_amount':lambda:{"coupon_amount" : order.get("discount_amount")},
-			'currency':lambda:{'currency':get_currency(order.currency)},
-			'currency_symbol':lambda:{'currency_symbol':get_currency_symbol(order.currency)},
-			'addresses': lambda:{"addresses": get_address(customer, order.customer_address, order.shipping_address_name)},
-			'shipping_method': lambda:{'shipping_method':{
-				"transporter": order.transporter,
+        computed_fields = {
+            'tax': lambda: {"tax": charges.get("tax", 0)},
+            'shipping': lambda: {"shipping": charges.get("shipping", 0)},
+            'gateway_charge': lambda: {"gateway_charges": charges.get("gateway_charge", 0)},
+            'subtotal_include_tax': lambda: {"subtotal_include_tax": order.total + charges.get("tax", 0)},
+            'subtotal_exclude_tax': lambda: {"subtotal_exclude_tax": order.total},
+            'total': lambda: {"total": order.rounded_total - order.store_credit_used},
+            'creation': lambda: {"creation": get_creation_date_time(order.name)},
+            'order_details': lambda: {"order_details": get_product_details(order.name)},
+            'payment_status': lambda: {"payment_status": order.get("workflow_state")},
+            'coupon_code': lambda: {"coupon_code": order.get("coupon_code")},
+            'coupon_amount': lambda: {"coupon_amount": order.get("discount_amount")},
+            'currency': lambda: {'currency': get_currency(order.currency)},
+            'currency_symbol': lambda: {'currency_symbol': get_currency_symbol(order.currency)},
+            'addresses': lambda: {"addresses": get_address(customer, order.customer_address, order.shipping_address_name)},
+            'shipping_method': lambda: {'shipping_method': {
+                "transporter": order.transporter,
                 "transport_charges": order.transport_charges,
                 "door_delivery": order.door_delivery,
                 "godown_delivery": order.godown_delivery,
                 "location": order.location,
                 "remarks": order.remarks
-			}},
-			'outstanding_amount':lambda:{"outstanding_amount": frappe.db.get_value("Return Replacement Request", {"new_order_id": order.name}, "outstanding_amount") or 0}
-			}
+            }},
+            'outstanding_amount': lambda: {"outstanding_amount": frappe.db.get_value("Return Replacement Request", {"new_order_id": order.name}, "outstanding_amount") or 0},
+            'print_url': lambda: {"print_url": print_url}
+        }
         charges_fields = {}
         for field_name in field_names:
             if field_name in computed_fields.keys():
                 charges_fields.update(computed_fields.get(field_name)())
             else:
                 charges_fields.update({field_name: order.get(field_name)})
-        order_data.append(charges_fields)    
+        order_data.append(charges_fields)
     return order_data
-                
+
+
 	
 def get_product_details(order):
 	quot_doc = frappe.get_doc('Sales Order', order)
@@ -253,7 +293,7 @@ def get_creation_date_time(order):
         return formatted_date_time
 
 def get_item_info(item, item_row):
-	from summitapp.api.v1.cart import get_item_details as item_details
+	from summitapp.api.v2.cart import get_item_details as item_details
 	l1 = item_details(item, item_row)
 	l1.append({'name':'Quantity', 'value': item_row.qty})
 	return l1
@@ -281,15 +321,17 @@ def get_address_detail_json(type, customer, address_doc):
 			'values' : [get_address_details(customer, address_doc)] if address_doc else []
 		}
 
-def submit_quotation(quot_doc, billing_address_id, shipping_address_id, payment_date):
+def submit_quotation(quot_doc, billing_address_id, shipping_address_id, payment_date,company_gstin):
+    print("quote doc", quot_doc)
     quot_doc.customer_address = billing_address_id
     quot_doc.shipping_address_name = shipping_address_id
     quot_doc.payment_schedule = []
     quot_doc.save()
     quot_doc.submit()
-    return create_sales_order(quot_doc, payment_date)
+    return create_sales_order(quot_doc, payment_date,company_gstin)
 
-def create_sales_order(quot_doc, payment_date):
+def create_sales_order(quot_doc, payment_date,company_gstin):
+    print("quotation create so", quot_doc)
     so_doc = make_sales_order(quot_doc.name)
     if payment_date:
         payment_date = datetime.strptime(payment_date, "%d/%m/%Y").strftime("%Y-%m-%d")
@@ -297,13 +339,18 @@ def create_sales_order(quot_doc, payment_date):
     else:
         transaction_date = datetime.strptime(so_doc.transaction_date, "%Y-%m-%d")
         so_doc.delivery_date = (transaction_date + timedelta(days=7)).date()
+    so_doc.company_gstin = company_gstin
+    so_doc.custom_session_id = quot_doc.session_id
     so_doc.payment_schedule = []
+    
     so_doc.flags.ignore_permissions = True
     so_doc.save()
+    
     return confirm_order(so_doc)
-	
+
 
 def confirm_order(so_doc):
+    print("sodoc", so_doc)
     with contextlib.suppress(Exception):
         so_doc.flags.ignore_permissions = True
         so_doc.payment_schedule = []
@@ -328,28 +375,65 @@ def get_date_range_filter(filters, date_range):
 	return filters
 
 
+# def return_replace_item(kwargs):
+# 	try:
+# 		if not kwargs.get('order_id'): return error_response('Please Sepecify Order')
+# 		if not kwargs.get('product_id'): return error_response('Please Specify Product')
+# 		rr_doc = frappe.new_doc('Return Replacement Request')
+# 		rr_doc.type = kwargs.get('return_replacement')
+# 		rr_doc.reason = kwargs.get('description')
+# 		rr_doc.order_id = kwargs.get('order_id')
+# 		rr_doc.product_id = kwargs.get('product_id')
+# 		images = kwargs.get("images",{})
+# 		for file in images.values():
+# 			rr_doc.append("return_replacement_image",{"image":file})
+# 		rr_doc.save(ignore_permissions=True) # Ignoring Permissions to Save the Document
+# 		return success_response(data={'docname':rr_doc.name, 'doctype': rr_doc.doctype})
+# 	except Exception as e:
+# 		return error_response(e)
+
+@frappe.whitelist()
 def return_replace_item(kwargs):
-	try:
-		if not kwargs.get('order_id'): return error_response('Please Sepecify Order')
-		if not kwargs.get('product_id'): return error_response('Please Specify Product')
-		rr_doc = frappe.new_doc('Return Replacement Request')
-		rr_doc.type = kwargs.get('return_replacement')
-		rr_doc.reason = kwargs.get('description')
-		rr_doc.order_id = kwargs.get('order_id')
-		rr_doc.product_id = kwargs.get('product_id')
-		images = kwargs.get("images",{})
-		for file in images.values():
-			rr_doc.append("return_replacement_image",{"image":file})
-		rr_doc.save(ignore_permissions=True) # Ignoring Permissions to Save the Document
-		return success_response(data={'docname':rr_doc.name, 'doctype': rr_doc.doctype})
-	except Exception as e:
-		return error_response(e)
+    try:
+        email = get_logged_user()  
+        customer = frappe.get_list("Customer", filters={"email": email})
+        if frappe.request.data:
+            request_data = json.loads(frappe.request.data)
+            if not request_data.get('order_id'): 
+                return error_response('Please Specify Order ID')
+            if not request_data.get('product_id'): 
+                return error_response('Please Specify Product ID')
+            
+            rr_doc = frappe.new_doc('Return Replacement Request')
+            rr_doc.type = kwargs.get('type')
+            rr_doc.reason = kwargs.get('reason')
+            rr_doc.order_id = request_data.get('order_id')
+            rr_doc.product_id = request_data.get('product_id')
+            rr_doc.customer = customer[0].name if customer else None  # Accessing the first customer if exists
+            rr_doc.date = datetime.now()
+            rr_doc.customer_email = email
+            images = request_data.get("images", [])
+            for i in images:
+                image = i.get('image')
+                rr_doc.append(
+                    "return_replacement_image",
+                    {
+                        "doctype": "Return Replacement Image",
+                        "image": image
+                    },
+                )
+            rr_doc.save(ignore_permissions=True)
+            return success_response(data={'docname': rr_doc.name, 'doctype': rr_doc.doctype})
+    except Exception as e:
+        frappe.logger("rr").exception(e)
+        return error_response(str(e))
 
 def get_order_details(kwargs):
 	if not kwargs.get('order_id'):
 		return "Invalid Order Id"
 	try:
 		doc = frappe.get_doc("Sales Order", kwargs.get("order_id"))
+		sales_invoice = frappe.get_all("Sales Invoice", {'sales_order': doc.name}, "*")
 		tax = 0
 		shipping = 0
 		for row in doc.get("taxes", []):
@@ -363,7 +447,8 @@ def get_order_details(kwargs):
 			"revenue": doc.rounded_total or doc.grand_total,
 			"tax": tax,
 			"shipping": shipping,
-			"coupon": doc.get("coupon_code")
+			"coupon": doc.get("coupon_code"),
+			"print_url": get_pdf_link("Sales Invoice", sales_invoice[0].name)
 		}
 		products = []
 		for row in doc.items:
@@ -409,3 +494,9 @@ def recently_bought(kwargs):
 	except Exception as e:
 		frappe.logger("order").exception(e)
 		return error_response(e)
+
+
+def get_pdf_link(voucher_type, voucher_no, print_format ="GST-Tax Invoice"):
+	if print_format:
+		return f"{frappe.utils.get_url()}/api/method/frappe.utils.print_format.download_pdf?doctype={voucher_type}&name={voucher_no}&format={print_format}&no_letterhead=1&letterhead=No Letterhead&lang=en"
+	return "#"		
