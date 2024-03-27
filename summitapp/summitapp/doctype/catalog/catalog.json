@@ -10,10 +10,10 @@
   "name1",
   "access_level",
   "items",
-  "column_break_tnhc",
-  "image",
+  "column_break_qewl",
+  "slug",
   "sequence",
-  "slug"
+  "image"
  ],
  "fields": [
   {
@@ -34,13 +34,13 @@
    "options": "Item Child"
   },
   {
-   "fieldname": "column_break_tnhc",
+   "fieldname": "column_break_qewl",
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "image",
-   "fieldtype": "Attach",
-   "label": "Image"
+   "fieldname": "slug",
+   "fieldtype": "Data",
+   "label": "Slug"
   },
   {
    "fieldname": "sequence",
@@ -48,14 +48,14 @@
    "label": "Sequence"
   },
   {
-   "fieldname": "slug",
-   "fieldtype": "Data",
-   "label": "Slug"
+   "fieldname": "image",
+   "fieldtype": "Attach",
+   "label": "Image"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-02-14 14:04:10.019433",
+ "modified": "2024-03-18 15:56:27.194352",
  "modified_by": "Administrator",
  "module": "SummitApp",
  "name": "Catalog",
