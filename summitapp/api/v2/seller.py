@@ -1,19 +1,22 @@
-
 from distutils.log import error
+
 import frappe
-from summitapp.utils import error_response, success_response 
+
+from summitapp.api.v2.utilities.utils import error_response, success_response
+
 
 def get(kwargs):
-    try:
-        data = frappe.db.sql(details_query(), as_dict=1)
-        return success_response(data=data)
-    except Exception as e:
-        frappe.logger('seller').exception(e)
-        return error_response('error in fetching seller details')
+	try:
+		data = frappe.db.sql(details_query(), as_dict=1)
+		return success_response(data=data)
+	except Exception as e:
+		frappe.logger("seller").exception(e)
+		return error_response("error in fetching seller details")
+
 
 def details_query():
-    return  """
-            SELECT 
+	return """
+            SELECT
             se.name as username,
             se.gst_number,
             se.user_email_id as email_id,
@@ -22,5 +25,5 @@ def details_query():
             se.city as city_name,
             se.country as country_name
             FROM
-            `tabSeller Registration` se   
+            `tabSeller Registration` se
         """

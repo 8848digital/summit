@@ -3,7 +3,8 @@
 
 # import frappe
 from frappe.model.document import Document
-from summitapp.api.v1.push_notification import send_notification
+
+from summitapp.api.v2.push_notification import send_notification
 
 
 class PushNotificationMessage(Document):
