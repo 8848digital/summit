@@ -33,11 +33,10 @@ def change_password(kwargs):
 		if not frappe.db.exists('User',email):
 			return error_response('please login to change password')
 		user = frappe.get_doc('User',email)
-		data = kwargs.get('data')
-		if frappe.local.login_manager.check_password(email, data.get('old_password')):
-			user.new_password = data.get('new_password')
+		if frappe.local.login_manager.check_password(email, kwargs.get('old_password')):
+			user.new_password = kwargs.get('new_password')
 			user.save(ignore_permissions=True)
-			return success_response()
+			return success_response("Password Updated!")
 		return error_response("Incorrect Old Password!")
 	except Exception as e:
 		frappe.logger("registration").exception(e) 
