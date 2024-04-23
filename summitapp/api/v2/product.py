@@ -544,7 +544,6 @@ def sort_item_by_price(items, price_range):
     if price_range:
         reverse = None
         if price_range == 'low_to_high':
-            print("low to high")
             reverse = False
         if price_range == 'high_to_low':
             reverse = True
