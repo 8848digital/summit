@@ -72,11 +72,11 @@ def get_list(kwargs):
             global_items = search(search_text, doctype='Item')
             count, data = get_list_data(None, {}, price_range, global_items, page_no, limit)
         result = get_processed_list(currency, data, customer_id, type)
-        print("RESTULT",result)
         total_count = count
         translated_item_fields = translate_result(result)
         if internal_call:
             return translated_item_fields
+        translated_item_fields = sort_item_by_price(translated_item_fields, price_range)
         return {'msg': 'success', 'data': translated_item_fields, 'total_count': total_count}
     except Exception as e:
         frappe.logger('product').exception(e)
@@ -539,3 +539,16 @@ def get_default_currency(kwargs):
           'default_currency': default_currency,
           'company':company_name
           }        
+
+def sort_item_by_price(items, price_range):
+    if price_range:
+        reverse = None
+        if price_range == 'low_to_high':
+            print("low to high")
+            reverse = False
+        if price_range == 'high_to_low':
+            reverse = True
+        if reverse is not None:
+            sorted_items = sorted(items, key=lambda item: float(item.get('price', 0)), reverse=reverse)
+            items = sorted_items
+    return items
