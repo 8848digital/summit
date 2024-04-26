@@ -139,13 +139,15 @@ def get_details(kwargs):
                 translated_item_fields[fieldname] = _(value)
             translated_item_fields["variants"] = []
             translated_item_fields["attributes"] = []
-            varient_item = frappe.get_value("Item", item_slug, 'variant_of')
-            has_varient = frappe.get_value("Item", item_slug, 'has_variants')
+            translated_item_fields["is_template"] = False
+            varient_item = frappe.get_value("Item", {"slug": item_slug}, 'variant_of')
+            has_varient = frappe.get_value("Item", {"slug": item_slug}, 'has_variants')
             if varient_item is not None or has_varient == 1:
                 if has_varient == 1:
                     template = item_slug
+                    translated_item_fields["is_template"] = True
                 else:
-                    template = frappe.get_value("Item", varient_item, 'name')
+                    template = varient_item
                 processed_items_varient = get_variants({"item": template})['data']
                 if processed_items_varient["item_code"]:
                     translated_item_fields["item_code"] = processed_items_varient["item_code"]
