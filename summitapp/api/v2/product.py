@@ -132,27 +132,25 @@ def get_details(kwargs):
         filters = get_filter_list({'slug': item_slug, 'access_level': get_access_level(customer_id)})
         count, item = get_list_data(None, filters, None, None, None, limit=1)
         field_names = get_field_names('Details')
+        translated_item_fields = {}
         if item:
             item_fields = get_item_field_values(currency, item, customer_id, None, field_names)
-            translated_item_fields = {}
             for fieldname, value in item_fields.items():
                 translated_item_fields[fieldname] = _(value)
-        else:
-            translated_item_fields = {}
-        translated_item_fields["variants"] = []
-        translated_item_fields["attributes"] = []
-        varient_item = frappe.get_value("Item", item_slug, 'variant_of')
-        has_varient = frappe.get_value("Item", item_slug, 'has_variants')
-        if varient_item is not None or has_varient == 1:
-            if has_varient == 1:
-                template = item_slug
-            else:
-                template = frappe.get_value("Item", varient_item, 'name')
-            processed_items_varient = get_variants({"item": template})['data']
-            if processed_items_varient["item_code"]:
-                translated_item_fields["item_code"] = processed_items_varient["item_code"]
-            translated_item_fields["variants"] = processed_items_varient["variants"]
-            translated_item_fields["attributes"] = processed_items_varient["attributes"]
+            translated_item_fields["variants"] = []
+            translated_item_fields["attributes"] = []
+            varient_item = frappe.get_value("Item", item_slug, 'variant_of')
+            has_varient = frappe.get_value("Item", item_slug, 'has_variants')
+            if varient_item is not None or has_varient == 1:
+                if has_varient == 1:
+                    template = item_slug
+                else:
+                    template = frappe.get_value("Item", varient_item, 'name')
+                processed_items_varient = get_variants({"item": template})['data']
+                if processed_items_varient["item_code"]:
+                    translated_item_fields["item_code"] = processed_items_varient["item_code"]
+                translated_item_fields["variants"] = processed_items_varient["variants"]
+                translated_item_fields["attributes"] = processed_items_varient["attributes"]
         
         return {'msg':('Success'), 'data': translated_item_fields}
     
