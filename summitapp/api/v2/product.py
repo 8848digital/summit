@@ -102,7 +102,7 @@ def get_variants(kwargs):
         attributes_list = []
         for attribute in attributes:
             attr = list({var.get(attribute) for var in variant_info if var.get(attribute)})
-            sorted_attr = frappe.get_all("Item Attribute Value",{"attribute_value":["IN", attr], "parent": attribute},pluck='abbr', order_by="idx asc")
+            sorted_attr = frappe.get_all("Item Attribute Value",{"abbr":["IN", attr], "parent": attribute},pluck='abbr', order_by="idx asc")
             attributes_list.append({
                 "field_name": attribute, 
                 "label": f"Select {attribute}", 
@@ -132,7 +132,6 @@ def get_details(kwargs):
         filters = get_filter_list({'slug': item_slug, 'access_level': get_access_level(customer_id)})
         count, item = get_list_data(None, filters, None, None, None, limit=1)
         field_names = get_field_names('Details')
-        processed_items = []
         if item:
             item_fields = get_item_field_values(currency, item, customer_id, None, field_names)
             translated_item_fields = {}
@@ -154,9 +153,8 @@ def get_details(kwargs):
                 translated_item_fields["item_code"] = processed_items_varient["item_code"]
             translated_item_fields["variants"] = processed_items_varient["variants"]
             translated_item_fields["attributes"] = processed_items_varient["attributes"]
-        processed_items.append(translated_item_fields)
         
-        return {'msg':('Success'), 'data': processed_items}
+        return {'msg':('Success'), 'data': translated_item_fields}
     
     except Exception as e:
         frappe.logger('product').exception(e)
