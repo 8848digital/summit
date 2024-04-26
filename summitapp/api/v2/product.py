@@ -86,42 +86,38 @@ def get_list(kwargs):
 # Whitelisted Function
 @frappe.whitelist(allow_guest=True)
 def get_variants(kwargs):
-	try:
-		slug = kwargs.get('item')
-		item_code = frappe.get_value('Item', {'slug': slug})
-		filters = {'item_code': item_code}
-		variant_list = get_variant_details(filters)
-		variant_info = get_variant_info(variant_list)
-		default_size = get_default_variant(item_code, "size")
-		default_colour = get_default_variant(item_code, "colour")
-		size = list({var.get('size') for var in variant_info if var.get('size')})
-		sorted_size = frappe.get_all("Item Attribute Value",{"attribute_value":["in",size], "parent": "Size"},pluck='attribute_value', order_by="idx asc")
-		colour = list({var.get('colour') for var in variant_info if var.get('colour')})
-		stock_len = len([var.get('stock') for var in variant_info if var.get('stock')])
-		attributes = []
-		if size:
-			attributes.append({
-				"field_name": "size", 
-				"label": "Select Size", 
-				"values": sorted_size, 
-				"default_value": default_size, 
-				"display_thumbnail": variant_thumbnail_reqd(item_code, "size")
-			})
-		if colour:
-			attributes.append({
-				"field_name": "colour",
-				"label": "Select Colour",
-				"values": colour,
-				"default_value": default_colour,
-				"display_thumbnail": variant_thumbnail_reqd(item_code, "colour")
-			})
-		attr_dict = {'item_code': item_code,
-					 'variants': get_variant_info(variant_list),
-					 'attributes': attributes}
-		return success_response(data=attr_dict)
-	except Exception as e:
-		frappe.logger('product').exception(e)
-		return error_response(e)
+    try:
+        slug = kwargs.get('item')
+        item_code = frappe.get_value('Item', {'slug': slug})
+        filters = {'item_code': item_code}
+        variant_list = get_variant_details(filters)
+        variant_info = get_variant_info(variant_list)
+
+        attributes = []
+        for varient in variant_info:
+            varient_attribute = get_item_varient_attribute(varient['variant_code'])
+            for att in varient_attribute:
+                if att.get('attribute') not in attributes:
+                    attributes.append(att.get('attribute'))
+        attributes_list = []
+        for attribute in attributes:
+            attr = list({var.get(attribute) for var in variant_info if var.get(attribute)})
+            sorted_attr = frappe.get_all("Item Attribute Value",{"attribute_value":["IN", attr], "parent": attribute},pluck='abbr', order_by="idx asc")
+            attributes_list.append({
+                "field_name": attribute, 
+                "label": f"Select {attribute}", 
+                "values": sorted_attr, 
+                "default_value": get_default_variant(item_code, attribute), 
+                "display_thumbnail": variant_thumbnail_reqd(item_code, attribute)
+            })
+        stock_len = len([var.get('stock') for var in variant_info if var.get('stock')])
+        attr_dict = {'item_code': item_code,
+                        'variants': get_variant_info(variant_list),
+                        'attributes': attributes_list}
+        return success_response(data=attr_dict)
+    except Exception as e:
+        frappe.logger('product').exception(e)
+        return error_response(e)
 
 # Whitelisted Function
 @frappe.whitelist(allow_guest=True)
@@ -137,13 +133,28 @@ def get_details(kwargs):
         count, item = get_list_data(None, filters, None, None, None, limit=1)
         field_names = get_field_names('Details')
         processed_items = []
-
         if item:
             item_fields = get_item_field_values(currency, item, customer_id, None, field_names)
             translated_item_fields = {}
             for fieldname, value in item_fields.items():
                 translated_item_fields[fieldname] = _(value)
-            processed_items.append(translated_item_fields)
+        else:
+            translated_item_fields = {}
+        translated_item_fields["variants"] = []
+        translated_item_fields["attributes"] = []
+        varient_item = frappe.get_value("Item", item_slug, 'variant_of')
+        has_varient = frappe.get_value("Item", item_slug, 'has_variants')
+        if varient_item is not None or has_varient == 1:
+            if has_varient == 1:
+                template = item_slug
+            else:
+                template = frappe.get_value("Item", varient_item, 'name')
+            processed_items_varient = get_variants({"item": template})['data']
+            if processed_items_varient["item_code"]:
+                translated_item_fields["item_code"] = processed_items_varient["item_code"]
+            translated_item_fields["variants"] = processed_items_varient["variants"]
+            translated_item_fields["attributes"] = processed_items_varient["attributes"]
+        processed_items.append(translated_item_fields)
         
         return {'msg':('Success'), 'data': processed_items}
     
@@ -277,14 +288,20 @@ def get_variant_slug(item_code):
 	return frappe.get_value('Item',{'item_code':item_code},'slug')
 
 def get_variant_info(variant_list):
-	return [{
-			'variant_code': item.name,
-			'slug': get_variant_slug(item.name),
-			'size': get_variant_size(item.name),
-			'colour': get_variant_colour(item.name),
-			'stock': True if get_stock_info(item.name, 'stock_qty') != 0 else False,
-			'image': get_slide_images(item.name, False)
-			} for item in variant_list]
+    varient_info_list = []
+    for item in variant_list:
+        varient_info = {
+            'variant_code': item.name,
+            'slug': get_variant_slug(item.name),
+            }
+        item_varient_attribute = get_item_varient_attribute(item.name)
+        for attribute in item_varient_attribute:
+            varient_info[attribute['attribute']] = attribute['abbr']
+        varient_info['stock'] = True if get_stock_info(item.name, 'stock_qty') != 0 else False
+        varient_info['image'] = get_slide_images(item.name, False)
+        varient_info_list.append(varient_info)
+        
+    return varient_info_list
 
 def append_applied_filters(filters, filter_list):
     section_list = filter_list.get('sections')
@@ -544,7 +561,6 @@ def sort_item_by_price(items, price_range):
     if price_range:
         reverse = None
         if price_range == 'low_to_high':
-            print("low to high")
             reverse = False
         if price_range == 'high_to_low':
             reverse = True
@@ -552,3 +568,11 @@ def sort_item_by_price(items, price_range):
             sorted_items = sorted(items, key=lambda item: float(item.get('price', 0)), reverse=reverse)
             items = sorted_items
     return items
+
+
+def get_item_varient_attribute(item_code):
+    item_varient_details = frappe.get_all('Item Variant Attribute',
+							{'parent': item_code}, ['attribute', 'attribute_value'])
+    for item in item_varient_details:
+         item["abbr"] = frappe.db.get_value('Item Attribute Value', {"attribute_value": item["attribute_value"]}, 'abbr')
+    return item_varient_details
