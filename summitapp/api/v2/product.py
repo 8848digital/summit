@@ -153,6 +153,31 @@ def get_details(kwargs):
                     translated_item_fields["item_code"] = processed_items_varient["item_code"]
                 translated_item_fields["variants"] = processed_items_varient["variants"]
                 translated_item_fields["attributes"] = processed_items_varient["attributes"]
+            product_attributes = {}
+            if not translated_item_fields["is_template"]:
+                for item in get_item_varient_attribute(item.name):
+                    product_attributes[item["attribute"]] = item["abbr"]
+            translated_item_fields["product_attributes"] = product_attributes
+            thumbnail_images = []
+            colours = []
+            if translated_item_fields.get("slide_img") and 'Colour' in translated_item_fields['product_attributes'].keys() and translated_item_fields['product_attributes']["Colour"] not in colours:
+                thumbnail_images.append({ 
+                                            "field_name": "Colour",
+                                            "Colour": translated_item_fields['product_attributes']["Colour"],
+                                            "image": translated_item_fields.get("slide_img")[0]
+                                         })
+                colours.append(translated_item_fields['product_attributes']["Colour"])
+            
+            for varient in translated_item_fields["variants"]:
+                if varient.get("image") and 'Colour' in varient.keys() and varient["Colour"] not in colours:
+                    thumbnail_images.append({ 
+                                            "field_name": "Colour",
+                                            "Color": varient["Colour"],
+                                            "image": varient.get("image")[0]
+                                         })
+                    colours.append(varient["Colour"])
+            translated_item_fields["thumbnail_images"] = thumbnail_images
+
         
         return {'msg':('Success'), 'data': translated_item_fields}
     
