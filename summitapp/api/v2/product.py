@@ -172,7 +172,7 @@ def get_details(kwargs):
                 if varient.get("image") and 'Colour' in varient.keys() and varient["Colour"] not in colours:
                     thumbnail_images.append({ 
                                             "field_name": "Colour",
-                                            "Color": varient["Colour"],
+                                            "Colour": varient["Colour"],
                                             "image": varient.get("image")[0]
                                          })
                     colours.append(varient["Colour"])
