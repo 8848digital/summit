@@ -417,12 +417,16 @@ def get_tagged_products(kwargs):
         tag = kwargs.get('tag')
         # Fetching the product limit from Tags MultiSelect
         tag_doc = frappe.get_doc("Tag", tag)
-        product_limit = tag_doc.product_limit
-
+        product_limit = tag_doc.set_product_limit
+        side_banner_image = tag_doc.tag_image
         items = frappe.get_list("Tags MultiSelect", {"tag": tag}, pluck='parent', ignore_permissions=True)
         customer_id = kwargs.get("customer_id")
         res = get_detailed_item_list(currency, items, customer_id, None, product_limit)
-        return success_response(data=res)
+        # return side_banner_image, res
+        response = {'msg': 'success'}
+        response['side banner'] = side_banner_image
+        response['data'] = res
+        return response
     except Exception as e:
         frappe.logger('product').exception(e)
         return error_response(e)
