@@ -82,10 +82,10 @@ def get(kwargs):
     try:
         fields = get_field_names("Banner")
 
-        banners = frappe.get_list("Home Banner", filters={"show_on_home_page": 1}, fields=["*"],order_by ="sequence")
+        banners = frappe.get_list("Home Banner", filters={"show_on_home_page": 1}, fields=fields,order_by ="sequence")
 
         if kwargs.get("category"):
-            banners = frappe.get_list("Home Banner", filters={"category": kwargs.get("category")}, fields=["*"])
+            banners = frappe.get_list("Home Banner", filters={"category": kwargs.get("category")}, fields=fields)
 
         for banner in banners:
             banner['btn_info'] = button_info(banner)
